@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<!-- Browser error page. API clients get Problem Details JSON instead; nothing internal is shown here. -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hata · JWT Auth Konsolu</title>
+    <link rel="stylesheet" th:href="@{/assets/css/console.css}">
+</head>
+<body>
+<main>
+    <div class="card">
+        <h1 th:text="${status} ?: 'Hata'">404</h1>
+        <p th:text="${error} ?: 'Beklenmeyen bir hata oluştu.'">Not Found</p>
+        <p><a th:href="@{/console}">Konsola dön</a></p>
+    </div>
+</main>
+</body>
+</html>

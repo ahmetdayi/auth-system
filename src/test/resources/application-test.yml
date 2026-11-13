@@ -1,0 +1,19 @@
+# Integration tests. Database and Redis come from TestInfrastructure (Testcontainers, or IT_* variables).
+spring:
+  docker:
+    compose:
+      enabled: false
+
+app:
+  token:
+    generate-ephemeral-secret-if-missing: true   # no secret in the repository, not even a test one
+  password:
+    bcrypt-strength: 4                           # the minimum; keeps the suite fast
+  session-purge:
+    enabled: false                               # tests call the use case directly
+  outbox:
+    relay-enabled: false                         # tests deliver explicitly with OutboxRelay#deliverDue
+
+logging:
+  level:
+    tr.gov.kurum: INFO

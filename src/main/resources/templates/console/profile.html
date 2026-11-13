@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Profil')}"></head>
+<body data-page="profile">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Müşteri profili</h1>
+    <p class="lead">
+        Token yalnızca kim olduğunu söyler; veriler her modülün kendi tablosundan okunur. Sayfa üç modülü yan
+        yana gösterir: profil ve adresler <code>customer</code> (<code>/api/customer/profile</code>), üyelik
+        <code>membership</code> (<code>/api/membership</code>), şifre <code>identity</code>
+        (<code>/api/account/password</code>). Profil uç noktaları <code>TYPE_CUSTOMER</code> ister: admin
+        hesabıyla <code>403</code> alırsın (admin hesabının müşteri profili yoktur).
+    </p>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="row">
+                <h2>Profil</h2>
+                <span class="spacer"></span>
+                <button type="button" class="secondary small" data-action="load-profile">Yenile</button>
+            </div>
+            <div id="profile-view" class="muted">Yükleniyor…</div>
+            <div id="profile-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Adı değiştir</h2>
+            <p class="small muted"><code>PUT /api/customers/{id}/name</code> ·
+                <code>@PreAuthorize("@customerAccess.canModify(authentication, #id)")</code>: müşteri yalnızca
+                kendini, admin <code>customer:write</code> izniyle herkesi değiştirebilir.</p>
+            <form id="rename-form">
+                <div class="inline-fields">
+                    <div class="field">
+                        <label for="customerId">Müşteri id</label>
+                        <input id="customerId" name="customerId" type="number" min="1">
+                    </div>
+                    <div class="field">
+                        <label for="firstName">Ad</label>
+                        <input id="firstName" name="firstName" type="text">
+                    </div>
+                    <div class="field">
+                        <label for="lastName">Soyad</label>
+                        <input id="lastName" name="lastName" type="text">
+                    </div>
+                </div>
+                <div class="row">
+                    <button type="submit">Kaydet</button>
+                    <span class="small muted">Başka bir müşterinin id'sini yazarsan <code>403</code>.</span>
+                </div>
+            </form>
+            <div id="rename-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Adres ekle</h2>
+            <p class="small muted">Adresler Customer aggregate'inin parçasıdır; ayrı bir repository'leri yoktur.
+                En fazla 5 adres (kural domain'de).</p>
+            <form id="address-form">
+                <div class="inline-fields">
+                    <div class="field"><label for="label">Başlık</label><input id="label" name="label" type="text"></div>
+                    <div class="field"><label for="city">Şehir</label><input id="city" name="city" type="text"></div>
+                </div>
+                <div class="field"><label for="line">Adres</label><input id="line" name="line" type="text"></div>
+                <button type="submit">Ekle</button>
+            </form>
+            <div id="address-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Şifre değiştir</h2>
+            <p class="small muted">Başarılı olunca hesabın bütün oturumları kapanır, bu cihazınki dahil.
+                Diğer cihazlardaki access token'lar da hemen iptal edilir (Redis'te hesap bazlı kesim zamanı).</p>
+            <form id="password-form" autocomplete="off">
+                <div class="field">
+                    <label for="currentPassword">Mevcut şifre</label>
+                    <input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password">
+                </div>
+                <div class="field">
+                    <label for="newPassword">Yeni şifre</label>
+                    <input id="newPassword" name="newPassword" type="password" autocomplete="new-password">
+                </div>
+                <button type="submit" class="danger">Şifreyi değiştir</button>
+            </form>
+            <div id="password-result"></div>
+        </div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/profile.js}"></script>
+</body>
+</html>

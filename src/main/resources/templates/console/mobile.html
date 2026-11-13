@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Mobil (Bearer)')}"></head>
+<body data-page="mobile">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Mobil istemci simülasyonu</h1>
+    <p class="lead">
+        Bu sayfa bir mobil uygulama gibi davranır: <code>/api/auth/mobile/**</code> uç noktaları token'ları
+        gövdede döner, istekler <code>Authorization: Bearer</code> ile ve <strong>cookie'siz</strong>
+        (<code>credentials: 'omit'</code>) gider. Tarayıcı oturumunu etkilemez. Token'lar yalnızca bu sayfanın
+        belleğinde durur; sayfa yenilenince kaybolur.
+    </p>
+
+    <div class="grid-2">
+        <div class="card">
+            <h2>1. Giriş</h2>
+            <form id="mobile-login-form" autocomplete="off">
+                <div class="inline-fields">
+                    <div class="field"><label for="email">E-posta</label>
+                        <input id="email" name="email" type="text" inputmode="email"></div>
+                    <div class="field"><label for="password">Şifre</label>
+                        <input id="password" name="password" type="password"></div>
+                    <div class="field"><label for="userType">Tip</label>
+                        <select id="userType" name="userType">
+                            <option value="CUSTOMER">CUSTOMER</option>
+                            <option value="ADMIN">ADMIN</option>
+                        </select></div>
+                </div>
+                <div class="row">
+                    <button type="submit">Mobil giriş</button>
+                    <button type="button" class="secondary small" th:each="account : ${demoAccounts}"
+                            data-action="fill-demo" th:data-email="${account.email()}"
+                            th:data-type="${account.userType()}" th:data-password="${account.password()}"
+                            th:text="${#strings.substringBefore(account.email(), '@')}">ayse</button>
+                </div>
+            </form>
+            <div id="mobile-login-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>2. Token'lar</h2>
+            <div id="tokens-view" class="muted">Henüz giriş yok.</div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <h2>3. Token işlemleri</h2>
+            <div class="row">
+                <button type="button" data-action="call-me">GET /api/me (Bearer)</button>
+                <button type="button" data-action="refresh">Yenile (rotation)</button>
+                <button type="button" class="secondary" data-action="reuse-old">Eski refresh token'ı tekrar kullan</button>
+            </div>
+            <div class="row">
+                <button type="button" class="secondary" data-action="refresh-as-access">Refresh token'ı access token gibi gönder</button>
+                <button type="button" class="secondary" data-action="tampered">Payload'ı değiştirilmiş token</button>
+                <button type="button" class="secondary" data-action="logout-all">Tüm cihazlardan çık</button>
+                <button type="button" class="danger" data-action="logout">Mobil çıkış</button>
+            </div>
+            <ul class="small">
+                <li><strong>Eski refresh token</strong>: yenilemeden sonraki 5 saniye içinde <code>409
+                    REFRESH_IN_PROGRESS</code> (paralel istek toleransı). Daha sonra <code>401
+                    REFRESH_TOKEN_INVALID</code>: zincir kopyalanmış sayılır, oturum kapanır, hesabın o ana
+                    kadarki access token'ları iptal edilir. Sonra güncel token da çalışmaz.</li>
+                <li><strong>Çıkış</strong> sonrası aynı access token <code>401 TOKEN_REVOKED</code> alır.</li>
+            </ul>
+            <div id="ops-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>4. Serbest istek (Bearer)</h2>
+            <form id="custom-form">
+                <div class="inline-fields">
+                    <div class="field">
+                        <label for="method">Metot</label>
+                        <select id="method" name="method">
+                            <option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="path">Yol</label>
+                        <input id="path" name="path" type="text" value="/api/content/articles">
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="body">JSON gövde (isteğe bağlı)</label>
+                    <textarea id="body" name="body" placeholder='{"firstName":"Ayşe","lastName":"Yılmaz"}'></textarea>
+                </div>
+                <button type="submit">Gönder</button>
+                <span class="small muted">Bearer isteklerde CSRF başlığı gerekmez.</span>
+            </form>
+            <div id="custom-result"></div>
+        </div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/mobile.js}"></script>
+</body>
+</html>

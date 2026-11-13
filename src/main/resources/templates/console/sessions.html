@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Oturumlar')}"></head>
+<body data-page="sessions">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Oturumlar ve token yaşam döngüsü</h1>
+    <p class="lead">
+        Bir oturum, bir girişten doğan refresh token zinciridir. Her yenilemede refresh token değişir (rotation);
+        eski token tekrar gelirse (birkaç saniyelik paralel sekme toleransından sonra) zincir kopyalanmış sayılır
+        ve oturum kapanır. Başka bir cihazda (ya da gizli pencerede) giriş yapıp bu listeyi yenile.
+    </p>
+
+    <div class="grid-2">
+        <div class="card">
+            <h2>Bu tarayıcının access token'ı</h2>
+            <div id="token-view" class="muted">Yükleniyor…</div>
+            <div class="row">
+                <button type="button" data-action="refresh-now">Şimdi yenile (POST /api/auth/refresh)</button>
+                <button type="button" class="secondary" data-action="parallel-refresh">İki paralel yenileme</button>
+            </div>
+            <p class="small muted">Paralel yenileme: iki istek aynı refresh cookie'siyle aynı anda gider. Biri
+                token'ı döndürür, diğeri <code>409 REFRESH_IN_PROGRESS</code> alır ve oturum kapanmaz. Konsol bu
+                durumda kısa bir bekleme sonrası isteği yeni cookie ile tekrarlar.</p>
+            <div id="refresh-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Çıkış</h2>
+            <div class="row">
+                <button type="button" class="secondary" data-action="logout">Bu cihazdan çık</button>
+                <button type="button" class="danger" data-action="logout-all">Tüm cihazlardan çık</button>
+                <button type="button" class="secondary" data-action="logout-without-csrf">CSRF başlığı olmadan çık</button>
+            </div>
+            <ul class="small">
+                <li><strong>Bu cihazdan çık</strong>: refresh token'ın oturumu kapanır, bu access token'ın
+                    <code>jti</code>'si süresi dolana kadar Redis'te iptal listesinde tutulur.</li>
+                <li><strong>Tüm cihazlardan çık</strong>: hesabın bütün oturumları kapanır ve bu ana kadar
+                    verilmiş bütün access token'lar anında geçersiz olur.</li>
+                <li>Listeden tek bir oturumu kapatmak o cihazın refresh token'ını durdurur; o cihazın elindeki
+                    access token en fazla 15 dakika daha çalışır. Anında kesmek için "tüm cihazlardan çık".</li>
+            </ul>
+            <div id="logout-result"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="row">
+            <h2>Aktif oturumlarım</h2>
+            <span class="spacer"></span>
+            <button type="button" class="secondary small" data-action="load-sessions">Yenile</button>
+        </div>
+        <div id="sessions-view" class="table-wrap muted">Yükleniyor…</div>
+        <div id="sessions-result"></div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/sessions.js}"></script>
+</body>
+</html>

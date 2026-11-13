@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Kayıt')}"></head>
+<body data-page="register">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Müşteri kaydı</h1>
+    <p class="lead">
+        <code>POST /api/auth/register</code>. Bu istek CSRF korumalıdır: konsol <code>XSRF-TOKEN</code> cookie'sini
+        <code>X-XSRF-TOKEN</code> başlığına koyar. Kurallar domain'de: e-posta küçük harfe çevrilir
+        (<code>Locale.ROOT</code>), şifre en az 12 karakter ve en fazla 72 bayt (BCrypt sınırı; Türkçe harfler
+        2 bayt) olmalıdır. Aynı e-posta iki kez kaydedilemez; bunu veritabanındaki unique kısıt da garanti eder.
+    </p>
+    <div class="grid-2">
+        <div class="card">
+            <form id="register-form" autocomplete="off">
+                <div class="field">
+                    <label for="email">E-posta</label>
+                    <input id="email" name="email" type="text" inputmode="email">
+                </div>
+                <div class="inline-fields">
+                    <div class="field">
+                        <label for="firstName">Ad</label>
+                        <input id="firstName" name="firstName" type="text">
+                    </div>
+                    <div class="field">
+                        <label for="lastName">Soyad</label>
+                        <input id="lastName" name="lastName" type="text">
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="password">Şifre</label>
+                    <input id="password" name="password" type="password" autocomplete="new-password">
+                    <div class="small muted" id="password-info">0 karakter, 0 bayt</div>
+                </div>
+                <div class="row">
+                    <button type="submit">Kayıt ol</button>
+                    <button type="button" class="secondary" data-action="register-without-csrf">CSRF başlığı olmadan dene</button>
+                </div>
+            </form>
+            <div id="register-result"></div>
+        </div>
+        <div class="card">
+            <h2>Denenecekler</h2>
+            <ul class="small">
+                <li><code>ILKER@Example.com</code> ile kaydol, sonra <code>ilker@example.com</code> ile giriş yap:
+                    sunucunun locale'i Türkçe olsa da adres <code>ılker</code> olmaz.</li>
+                <li>11 karakterlik şifre: <code>400 PASSWORD_TOO_SHORT</code>.</li>
+                <li>37 tane <code>ğ</code> (74 bayt): <code>400 PASSWORD_TOO_LONG</code>. Karakter sayısı 72'nin
+                    altında, bayt sayısı üstünde.</li>
+                <li>Var olan bir e-posta: <code>409 EMAIL_ALREADY_REGISTERED</code>.</li>
+                <li>Boş alanlar: <code>400 VALIDATION_FAILED</code> ve alan bazında hata listesi.</li>
+                <li>"CSRF başlığı olmadan dene": <code>403 CSRF_TOKEN_INVALID</code>.</li>
+            </ul>
+        </div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/register.js}"></script>
+</body>
+</html>

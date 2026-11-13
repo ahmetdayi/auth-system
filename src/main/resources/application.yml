@@ -1,0 +1,86 @@
+# Production defaults. Everything secret or environment-specific comes from the environment:
+#   SPRING_DATASOURCE_URL / SPRING_DATASOURCE_USERNAME / SPRING_DATASOURCE_PASSWORD
+#   SPRING_DATA_REDIS_HOST / SPRING_DATA_REDIS_PORT / SPRING_DATA_REDIS_PASSWORD
+#   JWT_SECRET  (Base64, at least 256 bits; e.g. `openssl rand -base64 32`)
+# A missing datasource URL or JWT secret stops the application at startup (fail-closed).
+
+spring:
+  profiles:
+    active: local
+  application:
+    name: jwt-auth-hexagonal
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # the schema belongs to Flyway; Hibernate only checks it
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+  data:
+    redis:
+      timeout: 2s
+  messages:
+    basename: messages
+    fallback-to-system-locale: false
+  web:
+    locale: tr
+    locale-resolver: fixed
+  docker:
+    compose:
+      enabled: false              # turned on only by the "local" profile
+
+server:
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
+
+app:
+  token:
+    jwt-secret: ${JWT_SECRET:}
+    generate-ephemeral-secret-if-missing: false
+    issuer: jwt-auth-hexagonal
+    access-token-ttl: 15m
+    refresh-token-ttl: 14d
+    # A token rotated less than this long ago is answered 409 (parallel tabs) instead of being treated as reuse.
+    rotation-grace-period: 5s
+  password:
+    bcrypt-strength: 12
+  login-throttle:
+    max-failures-per-account: 5
+    max-failures-per-ip: 50
+    window: 15m
+  session-purge:
+    enabled: true
+    cron: "0 17 3 * * *"
+    batch-size: 500
+    max-batches-per-run: 100
+  # Integration events between bounded contexts (e.g. CustomerRegistered -> customer profile).
+  outbox:
+    relay-enabled: true
+    relay-interval-ms: 500
+    batch-size: 100
+    max-attempts: 10              # then the event stays in outbox_events with last_error for inspection
+    retention: 7d
+    cleanup-cron: "0 47 3 * * *"
+  cookie:
+    secure: true
+  cors:
+    allowed-origins: []
+  console:
+    show-demo-accounts: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never

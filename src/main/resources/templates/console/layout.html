@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Shared fragments of the console. No inline <script> or style attribute anywhere: the Content-Security-Policy
+  allows scripts and styles only from this origin's files, so injected markup could not run.
+-->
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · JWT Auth Konsolu'">JWT Auth Konsolu</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" th:href="@{/assets/css/console.css}">
+</head>
+<body>
+
+<header th:fragment="header" class="topbar">
+    <div class="topbar-inner">
+        <a class="brand" th:href="@{/console}">JWT Auth <span>Konsolu</span></a>
+        <nav class="nav">
+            <a th:href="@{/console}" th:classappend="${page == 'home'} ? 'active'">Ana sayfa</a>
+            <a th:href="@{/console/login}" th:classappend="${page == 'login'} ? 'active'">Giriş</a>
+            <a th:href="@{/console/register}" th:classappend="${page == 'register'} ? 'active'">Kayıt</a>
+            <a th:href="@{/console/profile}" th:classappend="${page == 'profile'} ? 'active'">Profil</a>
+            <a th:href="@{/console/sessions}" th:classappend="${page == 'sessions'} ? 'active'">Oturumlar</a>
+            <a th:href="@{/console/content}" th:classappend="${page == 'content'} ? 'active'">İçerik</a>
+            <a th:href="@{/console/admin}" th:classappend="${page == 'admin'} ? 'active'">Admin</a>
+            <a th:href="@{/console/mobile}" th:classappend="${page == 'mobile'} ? 'active'">Mobil (Bearer)</a>
+            <a th:href="@{/console/scenarios}" th:classappend="${page == 'scenarios'} ? 'active'">Senaryolar</a>
+        </nav>
+        <div class="status-area">
+            <!-- Rendered by the server from the access-token cookie of this page request. -->
+            <span th:if="${currentUser != null}" class="badge ok"
+                  th:title="'Sunucu bu sayfayı oluştururken: ' + ${currentUser.name()}"
+                  th:text="'Sunucu: ' + ${currentUser.name()}">Sunucu: CUSTOMER#1</span>
+            <span th:unless="${currentUser != null}" class="badge"
+                  title="Sayfa isteğinde geçerli bir access token yoktu (yoksa ya da süresi dolmuşsa)">Sunucu: anonim</span>
+            <!-- Updated by api.js through GET /api/me, with a silent refresh when the token expired. -->
+            <span id="session-status" class="badge">Tarayıcı: kontrol ediliyor…</span>
+            <button type="button" class="secondary small hidden" data-action="header-logout" id="header-logout">Çıkış</button>
+        </div>
+    </div>
+</header>
+
+<section th:fragment="request-log" class="log">
+    <div class="card">
+        <div class="row">
+            <h2>İstek günlüğü</h2>
+            <span class="muted small">Bu sayfadan yapılan her API çağrısı. Satıra tıklayınca istek ve yanıt görünür.</span>
+            <span class="spacer"></span>
+            <button type="button" class="secondary small" data-action="clear-log">Temizle</button>
+        </div>
+        <div id="log-entries" class="log-entries">
+            <p class="muted small" id="log-empty">Henüz istek yok.</p>
+        </div>
+    </div>
+</section>
+
+</body>
+</html>

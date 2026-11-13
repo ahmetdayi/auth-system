@@ -1,0 +1,27 @@
+# Local development: `mvn spring-boot:run` (the plugin activates this profile).
+# Spring Boot starts PostgreSQL and Redis from compose.yaml and wires their random ports automatically.
+
+spring:
+  docker:
+    compose:
+      enabled: true
+      file: compose.yaml
+      lifecycle-management: start-and-stop
+  flyway:
+    # Demo accounts and articles (R__demo_data.sql) exist only in this profile.
+    locations: classpath:db/migration,classpath:db/demo
+
+app:
+  token:
+    # No JWT_SECRET needed locally: a random key is generated at startup (tokens die with the process).
+    generate-ephemeral-secret-if-missing: true
+  cookie:
+    secure: false                 # plain http://localhost; browsers drop Secure cookies over http
+  login-throttle:
+    max-failures-per-ip: 100      # the scenario runner produces several failures per run
+  console:
+    show-demo-accounts: true
+
+logging:
+  level:
+    tr.gov.kurum: DEBUG

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('İçerik')}"></head>
+<body data-page="content">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Üyeliğe bağlı içerik</h1>
+    <p class="lead">
+        Ayrı bir bounded context (<code>content</code>). Kimlik modülünün üyelik tipini import etmez; çağıranın
+        token'ındaki <code>MEMBERSHIP_*</code> yetkisini kendi <code>ReaderTier</code> tipine çevirir
+        (anti-corruption layer). Aynı kısıt üç farklı yolla uygulanıyor; sonuçları karşılaştır.
+        GOLD (ayse), SILVER (mehmet), üyeliği yok (can) ve üyeliği bitmiş (zeynep) hesaplarıyla dene.
+    </p>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="row">
+                <h2>1. Makaleler (domain kuralı)</h2>
+                <span class="spacer"></span>
+                <button type="button" class="secondary small" data-action="load-articles">Yenile</button>
+            </div>
+            <p class="small muted"><code>GET /api/content/articles/{id}</code>: yetersiz seviyede
+                <code>Article.requireReadableBy</code> çalışır, <code>403 ARTICLE_REQUIRES_HIGHER_TIER</code>
+                döner. Kilitli makaleyi de açmayı dene.</p>
+            <div id="articles-view" class="muted">Yükleniyor…</div>
+            <div id="article-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>2. Seviye listeleri (@PreAuthorize + RoleHierarchy)</h2>
+            <p class="small muted"><code>@PreAuthorize("hasAuthority('MEMBERSHIP_' + #tier.name())")</code>.
+                Hiyerarşi: GOLD &gt; SILVER &gt; BRONZE. GOLD üye üç listeyi de görür, SILVER üye GOLD listesinde
+                genel <code>403 ACCESS_DENIED</code> alır.</p>
+            <div class="row">
+                <button type="button" class="secondary" data-action="tier" data-tier="BRONZE">BRONZE</button>
+                <button type="button" class="secondary" data-action="tier" data-tier="SILVER">SILVER</button>
+                <button type="button" class="secondary" data-action="tier" data-tier="GOLD">GOLD</button>
+            </div>
+            <div id="tier-result"></div>
+
+            <h2>3. İzin (rolden gelen permission)</h2>
+            <p class="small muted"><code>GET /api/content/premium/articles</code> ·
+                <code>content:premium:read</code> izni <code>PREMIUM_READER</code> rolünden gelir, üyelikten
+                bağımsızdır. Yalnızca ayse'de var.</p>
+            <button type="button" class="secondary" data-action="premium">Premium listeyi getir</button>
+            <div id="premium-result"></div>
+
+            <h2>İndirim (BigDecimal)</h2>
+            <button type="button" class="secondary" data-action="discount">İndirim oranım</button>
+            <div id="discount-result"></div>
+        </div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/content.js}"></script>
+</body>
+</html>

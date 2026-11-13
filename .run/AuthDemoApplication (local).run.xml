@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <!-- Runs the app from IntelliJ with the "local" profile, the way `mvn spring-boot:run` does.
+       The profile is given only to this run; application.yml stays production-safe. -->
+  <configuration default="false" name="AuthDemoApplication (local)" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="tr.gov.kurum.AuthDemoApplication" />
+    <module name="jwt-auth-hexagonal" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <envs>
+      <env name="SPRING_PROFILES_ACTIVE" value="local" />
+    </envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

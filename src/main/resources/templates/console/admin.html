@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Admin')}"></head>
+<body data-page="admin">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Yönetim</h1>
+    <p class="lead">
+        <code>/api/admin/**</code> URL kuralı <code>TYPE_ADMIN</code> ister (bu yetki kodda üretilir, rol
+        tablosundan gelemez). Metotlarda ayrıca izin kontrolü var: <code>customer:read</code> listeler,
+        <code>customer:write</code> değiştirir, adminlerin oturumları <code>SUPER_ADMIN</code> ister.
+        <code>admin@</code>, <code>destek@</code> (yalnızca okuma) ve <code>super@</code> ile farkı gör.
+        Müşteri listesi üç modülün verisini birleştirir (UI composition): liste <code>customer</code>, durum
+        <code>identity</code>, üyelik <code>membership</code> modülünden gelir; hiçbir modül diğerinin
+        tablosunu okumaz.
+    </p>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="row">
+                <h2>Dashboard</h2>
+                <span class="spacer"></span>
+                <button type="button" class="secondary small" data-action="load-dashboard">Yenile</button>
+            </div>
+            <div id="dashboard-view" class="muted">Yükleniyor…</div>
+        </div>
+
+        <div class="card">
+            <h2>Admin oturumları (SUPER_ADMIN)</h2>
+            <p class="small muted">Standart admin <code>customer:write</code> iznine sahip olsa da burada
+                <code>403</code> alır.</p>
+            <form id="admin-sessions-form" class="row">
+                <input name="adminId" type="number" min="1" value="1" aria-label="Admin id">
+                <button type="submit" class="secondary">Oturumları listele</button>
+                <button type="button" class="danger secondary" data-action="terminate-admin-sessions">Tümünü sonlandır</button>
+            </form>
+            <div id="admin-sessions-view"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Müşteriler</h2>
+        <form id="customer-filter" class="inline-fields">
+            <div class="field">
+                <label for="email">E-posta içerir</label>
+                <input id="email" name="email" type="text" placeholder="ör. example">
+            </div>
+            <div class="field">
+                <label for="sort">Sıralama</label>
+                <select id="sort" name="sort">
+                    <option value="REGISTERED_AT">REGISTERED_AT</option>
+                    <option value="EMAIL">EMAIL</option>
+                    <option value="LAST_NAME">LAST_NAME</option>
+                    <option value="password">password (beyaz listede yok → 400)</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="direction">Yön</label>
+                <select id="direction" name="direction">
+                    <option value="DESC">DESC</option>
+                    <option value="ASC">ASC</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="size">Sayfa boyu</label>
+                <select id="size" name="size">
+                    <option value="5">5</option>
+                    <option value="20" selected>20</option>
+                    <option value="100">100 (azami)</option>
+                    <option value="500">500 (sınır dışı → 400)</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>&nbsp;</label>
+                <button type="submit">Listele</button>
+            </div>
+        </form>
+        <div id="customers-view" class="table-wrap"></div>
+        <div class="row" id="pager"></div>
+        <div id="customers-result"></div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <h2>Üyelik ver</h2>
+            <p class="small muted">Müşterinin bir sonraki yenilemesinde token'a yansır (üyelik DB'den okunur).</p>
+            <form id="membership-form">
+                <div class="inline-fields">
+                    <div class="field"><label for="m-customerId">Müşteri id</label>
+                        <input id="m-customerId" name="customerId" type="number" min="1"></div>
+                    <div class="field"><label for="m-tier">Seviye</label>
+                        <select id="m-tier" name="tier">
+                            <option value="BRONZE">BRONZE</option>
+                            <option value="SILVER">SILVER</option>
+                            <option value="GOLD">GOLD</option>
+                        </select></div>
+                    <div class="field"><label for="m-validUntil">Bitiş (boş = süresiz)</label>
+                        <input id="m-validUntil" name="validUntil" type="datetime-local"></div>
+                </div>
+                <div class="row">
+                    <button type="submit">Üyelik ver</button>
+                    <button type="button" class="danger secondary" data-action="cancel-membership">Üyeliği iptal et</button>
+                </div>
+            </form>
+            <div id="membership-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Müşteri oturumları</h2>
+            <div id="customer-sessions-title" class="small muted">Listeden bir müşterinin "Oturumlar" butonuna tıkla.</div>
+            <div id="customer-sessions-view" class="table-wrap"></div>
+            <div id="customer-sessions-result"></div>
+        </div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/admin.js}"></script>
+</body>
+</html>

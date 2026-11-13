@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Ana sayfa')}"></head>
+<body data-page="home">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>JWT kimlik doğrulama test konsolu</h1>
+    <p class="lead">
+        Bu sayfalar gerçek bir istemci gibi REST API'yi çağırır. Her butonun arkasında bir HTTP isteği var;
+        istekler ve yanıtlar sayfanın altındaki günlükte görünür. Güvenlik kuralları konsol için gevşetilmedi:
+        sayfaları herkes açabilir, ama her işlem API'de yetki kontrolünden geçer.
+    </p>
+
+    <div class="grid-2">
+        <div class="card">
+            <h2>Token'lar nasıl taşınıyor?</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th></th><th>Tarayıcı</th><th>Mobil / sunucu</th></tr></thead>
+                    <tbody>
+                    <tr><td>Access token</td><td><code>access_token</code> cookie (HttpOnly)</td><td><code>Authorization: Bearer</code></td></tr>
+                    <tr><td>Refresh token</td><td><code>refresh_token</code> cookie, <code>Path=/api/auth</code></td><td>İstek gövdesinde</td></tr>
+                    <tr><td>Uç noktalar</td><td><code>/api/auth/login</code>, <code>/refresh</code></td><td><code>/api/auth/mobile/login</code>, <code>/refresh</code></td></tr>
+                    <tr><td>Token yanıt gövdesinde mi?</td><td>Hayır</td><td>Evet</td></tr>
+                    <tr><td>CSRF</td><td>Açık (<code>X-XSRF-TOKEN</code>)</td><td>Gerekmez (cookie yok)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note small">
+                Konsolun çoğu sayfası tarayıcı modunu kullanır. <a th:href="@{/console/mobile}">Mobil (Bearer)</a>
+                sayfası mobil uç noktaları kullanır, token'ları gösterir ve tarayıcı cookie'lerine dokunmaz.
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>Şu anki durum</h2>
+            <p class="small muted">Sunucunun bu sayfayı oluştururken gördüğü kimlik (access token cookie'sinden):</p>
+            <div th:if="${currentUser != null}">
+                <p><strong th:text="${currentUser.name()}">CUSTOMER#1</strong></p>
+                <div class="authorities">
+                    <span class="badge info" th:each="authority : ${currentUser.authorities()}" th:text="${authority}">ROLE_USER</span>
+                </div>
+            </div>
+            <p th:unless="${currentUser != null}" class="muted">Anonim. Access token yok ya da süresi dolmuş
+                (süresi dolmuşsa üstteki tarayıcı göstergesi sessizce yeniler).</p>
+            <h3>Nereden başlamalı?</h3>
+            <ol class="small">
+                <li><a th:href="@{/console/login}">Giriş</a> yap (aşağıdaki demo hesaplardan biriyle).</li>
+                <li><a th:href="@{/console/profile}">Profil</a>, <a th:href="@{/console/content}">İçerik</a> ve
+                    <a th:href="@{/console/sessions}">Oturumlar</a> sayfalarını dene.</li>
+                <li>Admin hesabıyla <a th:href="@{/console/admin}">Admin</a> sayfasında müşteriyi devre dışı bırak,
+                    müşteri sekmesinde ne olduğuna bak.</li>
+                <li><a th:href="@{/console/scenarios}">Senaryolar</a> sayfasında bütün güvenlik kontrollerini tek
+                    tıkla çalıştır.</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="card" th:if="${showDemoAccounts}">
+        <div class="row">
+            <h2>Demo hesaplar</h2>
+            <span class="muted small">Yalnızca <code>local</code> profilinde görünür. Hepsinin şifresi:
+                <code th:text="${demoAccounts[0].password()}">DemoSifre123!</code></span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>E-posta</th><th>Tip</th><th>Açıklama</th><th></th></tr></thead>
+                <tbody>
+                <tr th:each="account : ${demoAccounts}">
+                    <td><code th:text="${account.email()}">ayse@example.com</code></td>
+                    <td><span class="badge" th:text="${account.userType()}">CUSTOMER</span></td>
+                    <td th:text="${account.description()}">açıklama</td>
+                    <td>
+                        <button type="button" class="small" data-action="quick-login"
+                                th:data-email="${account.email()}" th:data-type="${account.userType()}"
+                                th:data-password="${account.password()}">Tarayıcıda giriş</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="quick-login-result"></div>
+    </div>
+    <div class="card" th:unless="${showDemoAccounts}">
+        <h2>Demo hesaplar</h2>
+        <p class="muted">Bu ortamda demo hesap listesi kapalı (<code>app.console.show-demo-accounts=false</code>).
+            Yerelde <code>mvn spring-boot:run</code> ile <code>local</code> profili açılır.</p>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/home.js}"></script>
+</body>
+</html>

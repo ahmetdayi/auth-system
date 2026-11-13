@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Giriş')}"></head>
+<body data-page="login">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Tarayıcı girişi</h1>
+    <p class="lead">
+        <code>POST /api/auth/login</code>. Başarılı girişte token'lar yalnızca HttpOnly cookie olarak yazılır;
+        yanıt gövdesinde token yoktur. Hatalı şifre, olmayan e-posta, devre dışı hesap ve yanlış hesap tipi aynı
+        cevabı alır (<code>INVALID_CREDENTIALS</code>): hesabın var olup olmadığı dışarı sızmaz.
+    </p>
+
+    <div class="grid-2">
+        <div class="card">
+            <form id="login-form" autocomplete="on">
+                <div class="field">
+                    <label for="email">E-posta</label>
+                    <input id="email" name="email" type="text" inputmode="email" autocomplete="username">
+                </div>
+                <div class="field">
+                    <label for="password">Şifre</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password">
+                </div>
+                <div class="field">
+                    <label for="userType">Hesap tipi</label>
+                    <select id="userType" name="userType">
+                        <option value="CUSTOMER">CUSTOMER (müşteri)</option>
+                        <option value="ADMIN">ADMIN (yönetici)</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <button type="submit">Giriş yap</button>
+                    <span class="spacer"></span>
+                    <button type="button" class="secondary" data-action="show-cookies">document.cookie göster</button>
+                </div>
+            </form>
+            <div id="login-result"></div>
+            <div id="cookie-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Neye bakmalı?</h2>
+            <ul class="small">
+                <li>Giriş sonrası <strong>document.cookie göster</strong>: yalnızca <code>XSRF-TOKEN</code> görünür.
+                    <code>access_token</code> ve <code>refresh_token</code> HttpOnly olduğu için sayfadaki JavaScript
+                    (ve olası bir XSS) onları okuyamaz.</li>
+                <li>Aynı hesabı 5 kez yanlış şifreyle dene: 6. denemede doğru şifre de <code>429
+                    TOO_MANY_LOGIN_ATTEMPTS</code> alır (sayaç e-posta + IP başına, 15 dakika).</li>
+                <li><code>pasif@example.com</code> doğru şifreyle de giremez; cevap yanlış şifreyle aynıdır.</li>
+                <li>Müşteri bilgileriyle tip olarak ADMIN seçmek de aynı cevabı verir: iki hesap tablosu ayrıdır.</li>
+            </ul>
+            <div th:if="${!#lists.isEmpty(demoAccounts)}">
+                <h3>Demo hesapla doldur</h3>
+                <div class="row">
+                    <button type="button" class="secondary small" th:each="account : ${demoAccounts}"
+                            data-action="fill-demo" th:data-email="${account.email()}"
+                            th:data-type="${account.userType()}" th:data-password="${account.password()}"
+                            th:text="${account.email()}">ayse@example.com</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/login.js}"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Used by Spring Boot's Docker Compose support in the "local" profile (`mvn spring-boot:run`).
+# Host ports are left random on purpose: Boot reads them from Docker and configures the application,
+# so a PostgreSQL or Redis already running on the machine causes no conflict.
+services:
+  postgres:
+    image: 'postgres:16-alpine'
+    environment:
+      POSTGRES_DB: authdemo
+      POSTGRES_USER: authdemo
+      POSTGRES_PASSWORD: authdemo-local-only
+    ports:
+      - '5432'
+  redis:
+    image: 'redis:7-alpine'
+    ports:
+      - '6379'

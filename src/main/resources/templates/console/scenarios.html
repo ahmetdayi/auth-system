@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Senaryolar')}"></head>
+<body data-page="scenarios" th:data-demo="${showDemoAccounts}">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Güvenlik senaryoları</h1>
+    <p class="lead">
+        Her satır gerçek API çağrılarıyla bir kuralı doğrular ve beklenen sonuçla karşılaştırır. Senaryolar
+        mobil uç noktaları ve cookie'siz istekleri kullanır, yani bu tarayıcının oturumuna dokunmaz. Değiştiren
+        senaryolar (ban, şifre değişikliği, çıkış) her çalıştırmada yeni kaydedilen bir test hesabında çalışır;
+        demo hesaplar yalnızca okunur. Rotation senaryosu tolerans süresini beklemek için yaklaşık 6 saniye sürer.
+    </p>
+    <div class="note warn small" th:unless="${showDemoAccounts}">
+        Bu senaryolar demo verisi ister (<code>local</code> profili). Bu ortamda demo hesaplar kapalı.
+    </div>
+    <div class="card">
+        <div class="row">
+            <button type="button" data-action="run-all" id="run-all" th:disabled="${!showDemoAccounts}">Tümünü çalıştır</button>
+            <span id="summary" class="muted"></span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>#</th><th>Senaryo</th><th>Beklenen</th><th>Gerçekleşen</th><th>Durum</th></tr></thead>
+                <tbody id="scenario-rows"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/scenarios.js}"></script>
+</body>
+</html>
