@@ -75,6 +75,7 @@ public final class TestData {
                 VALUES (nextval('role_id_seq'), ?, now(), now(), 0) ON CONFLICT (name) DO NOTHING
                 """, roleName);
         for (String permission : permissions) {
+            ensurePermission(permission);
             jdbc.update("""
                     INSERT INTO role_permissions (role_id, permission_name)
                     SELECT id, ? FROM roles WHERE name = ? ON CONFLICT DO NOTHING
@@ -91,6 +92,7 @@ public final class TestData {
         OffsetDateTime now = now();
         insertAccount(id, email, "ADMIN", level, now);
         for (String permission : permissions) {
+            ensurePermission(permission);
             jdbc.update("INSERT INTO account_permissions (account_id, permission_name) VALUES (?, ?)", id,
                 permission);
         }
@@ -107,6 +109,14 @@ public final class TestData {
                                       sessions_valid_after, created_at, updated_at, version)
                 VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, 0)
                 """, id, email, passwordHash, type, adminLevel, now.minusMinutes(1), now, now);
+    }
+
+    /** Satisfies the FK into {@code permissions} when tests assign codes ahead of catalog sync. */
+    private void ensurePermission(String permission) {
+        jdbc.update("""
+                INSERT INTO permissions (name, description, group_name) VALUES (?, ?, 'test')
+                ON CONFLICT (name) DO NOTHING
+                """, permission, permission);
     }
 
     public long queryLong(String sql, Object... args) {

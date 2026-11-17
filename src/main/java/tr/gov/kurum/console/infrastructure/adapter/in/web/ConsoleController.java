@@ -85,6 +85,11 @@ class ConsoleController {
         return page(model, "admin");
     }
 
+    @GetMapping("/console/permissions")
+    String permissions(Model model) {
+        return page(model, "permissions");
+    }
+
     @GetMapping("/console/mobile")
     String mobile(Model model) {
         model.addAttribute("demoAccounts", properties.showDemoAccounts() ? DemoAccount.ALL : List.of());

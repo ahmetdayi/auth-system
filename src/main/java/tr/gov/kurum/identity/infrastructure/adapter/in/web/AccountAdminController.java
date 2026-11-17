@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import tr.gov.kurum.common.domain.AccountId;
 import tr.gov.kurum.common.domain.AccountType;
+import tr.gov.kurum.common.domain.PermissionCodes;
 import tr.gov.kurum.identity.application.port.in.AccountAdministrationUseCase;
 import tr.gov.kurum.identity.application.port.in.AccountSummaryView;
 import tr.gov.kurum.identity.application.port.in.SessionAdministrationUseCase;
@@ -45,7 +46,7 @@ class AccountAdminController {
 
     /** Login data (status, type) for screens that combine several contexts, e.g. the customer list. */
     @GetMapping("/accounts")
-    @PreAuthorize("hasAuthority('customer:read')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_READ + "')")
     List<AccountSummaryView> accounts(@RequestParam @Size(min = 1, max = AccountAdministrationUseCase.MAX_LOOKUP_IDS)
                                       List<Long> ids) {
         return accounts.findAccounts(ids.stream().map(AccountId::new).collect(Collectors.toSet()));
@@ -53,35 +54,35 @@ class AccountAdminController {
 
     /** Ban: the account is disabled and every session and access token of it stops working at once. */
     @PostMapping("/customers/{customerId}/disable")
-    @PreAuthorize("hasAuthority('customer:write')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_WRITE + "')")
     ResponseEntity<Void> disableCustomer(@PathVariable long customerId) {
         accounts.disableCustomer(new AccountId(customerId));
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/customers/{customerId}/enable")
-    @PreAuthorize("hasAuthority('customer:write')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_WRITE + "')")
     ResponseEntity<Void> enableCustomer(@PathVariable long customerId) {
         accounts.enableCustomer(new AccountId(customerId));
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/customers/{customerId}/sessions")
-    @PreAuthorize("hasAuthority('customer:read')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_READ + "')")
     List<SessionView> customerSessions(@PathVariable long customerId) {
         return sessions.listActiveSessionsOf(new AccountId(customerId), AccountType.CUSTOMER);
     }
 
     /** Suspicious activity: every refresh token and every access token of the customer, immediately. */
     @DeleteMapping("/customers/{customerId}/sessions")
-    @PreAuthorize("hasAuthority('customer:write')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_WRITE + "')")
     ResponseEntity<Void> terminateCustomerSessions(@PathVariable long customerId) {
         sessions.terminateAllSessions(new AccountId(customerId), AccountType.CUSTOMER);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/customers/{customerId}/sessions/{sessionId}")
-    @PreAuthorize("hasAuthority('customer:write')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_WRITE + "')")
     ResponseEntity<Void> revokeCustomerSession(@PathVariable long customerId, @PathVariable long sessionId) {
         sessions.revokeSession(new AccountId(customerId), AccountType.CUSTOMER, new SessionId(sessionId));
         return ResponseEntity.noContent().build();

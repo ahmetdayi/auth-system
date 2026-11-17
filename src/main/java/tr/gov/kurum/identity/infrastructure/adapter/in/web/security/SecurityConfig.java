@@ -130,8 +130,7 @@ public class SecurityConfig {
     }
 
     /**
-     * Credentials are checked by the authentication use case, not by Spring's AuthenticationManager. This bean
-     * also stops Spring Boot from creating its default in-memory user with a generated password.
+     * Credentials are checked by the authentication use case, not by Spring's AuthenticationManager. This bean * also stops Spring Boot from creating its default in-memory user with a generated password.
      */
     @Bean
     AuthenticationManager authenticationManager() {

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tr.gov.kurum.common.domain.PermissionCodes;
 import tr.gov.kurum.content.application.port.in.ArticleSummaryView;
 import tr.gov.kurum.content.application.port.in.ArticleView;
 import tr.gov.kurum.content.application.port.in.ContentUseCase;
@@ -51,7 +52,7 @@ class ContentController {
     }
 
     @GetMapping("/premium/articles")
-    @PreAuthorize("hasAuthority('TYPE_CUSTOMER') and hasAuthority('content:premium:read')")
+    @PreAuthorize("hasAuthority('TYPE_CUSTOMER') and hasAuthority('" + PermissionCodes.CONTENT_PREMIUM_READ + "')")
     List<ArticleSummaryView> premiumArticles(Authentication authentication) {
         return content.listArticlesRequiring(ReaderTier.GOLD, ReaderTierResolver.of(authentication));
     }

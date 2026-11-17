@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import tr.gov.kurum.common.query.PageQuery;
 import tr.gov.kurum.common.query.SortDirection;
 import tr.gov.kurum.common.web.PageResponse;
+import tr.gov.kurum.common.domain.PermissionCodes;
 import tr.gov.kurum.customer.application.port.in.CustomerDirectoryEntry;
 import tr.gov.kurum.customer.application.port.in.CustomerDirectoryUseCase;
 import tr.gov.kurum.customer.application.port.in.CustomerSortField;
@@ -35,7 +36,7 @@ class CustomerDirectoryController {
 
     /** Sort fields are an enum: an unknown value is a 400, never a column name passed to the database. */
     @GetMapping("/customers")
-    @PreAuthorize("hasAuthority('TYPE_ADMIN') and hasAuthority('customer:read')")
+    @PreAuthorize("hasAuthority('TYPE_ADMIN') and hasAuthority('" + PermissionCodes.CUSTOMER_READ + "')")
     PageResponse<CustomerDirectoryEntry> listCustomers(
             @RequestParam(defaultValue = "0") @Min(0) @Max(10_000) int page,
             @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) @Min(1) @Max(PageQuery.MAX_SIZE) int size,

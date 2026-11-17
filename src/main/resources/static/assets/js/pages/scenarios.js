@@ -250,6 +250,26 @@ const scenarios = [
     },
   },
   {
+    title: 'İzin kataloğu (permissions tablosu) admin için okunur',
+    expected: '200 + customer:read satırı',
+    run: async () => {
+      const response = await withToken(ctx.support.accessToken)('GET', '/api/admin/permissions');
+      const status = expectResponse(response, 200);
+      if (!status.pass) return status;
+      const names = (response.data ?? []).map((row) => row.name);
+      if (!names.includes('customer:read')) {
+        return { pass: false, actual: `katalogda customer:read yok: ${names.join(', ')}` };
+      }
+      return { pass: true, actual: `200 · ${names.length} permission` };
+    },
+  },
+  {
+    title: 'Müşteri izin kataloğuna erişemez',
+    expected: '403 ACCESS_DENIED',
+    run: async () => expectResponse(await withToken(ctx.ayse.accessToken)('GET', '/api/admin/permissions'),
+      403, 'ACCESS_DENIED'),
+  },
+  {
     title: 'customer:write olmadan müşteri devre dışı bırakmak (destek@)',
     expected: '403 ACCESS_DENIED',
     run: async () => expectResponse(await withToken(ctx.support.accessToken)('POST',

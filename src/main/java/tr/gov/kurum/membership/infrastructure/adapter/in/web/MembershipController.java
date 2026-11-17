@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import tr.gov.kurum.common.domain.AccountId;
+import tr.gov.kurum.common.domain.PermissionCodes;
 import tr.gov.kurum.common.web.AuthenticatedAccount;
 import tr.gov.kurum.common.web.CurrentAccount;
 import tr.gov.kurum.membership.application.port.in.GrantMembershipCommand;
@@ -48,21 +49,21 @@ class MembershipController {
 
     /** For admin screens that put data of several contexts side by side. */
     @GetMapping("/admin/memberships")
-    @PreAuthorize("hasAuthority('TYPE_ADMIN') and hasAuthority('customer:read')")
+    @PreAuthorize("hasAuthority('TYPE_ADMIN') and hasAuthority('" + PermissionCodes.CUSTOMER_READ + "')")
     List<MembershipView> memberships(@RequestParam @Size(min = 1, max = MembershipQueryUseCase.MAX_LOOKUP_IDS)
                                      List<Long> ids) {
         return queries.membershipsOf(ids.stream().map(AccountId::new).collect(Collectors.toSet()));
     }
 
     @PutMapping("/admin/customers/{customerId}/membership")
-    @PreAuthorize("hasAuthority('TYPE_ADMIN') and hasAuthority('customer:write')")
+    @PreAuthorize("hasAuthority('TYPE_ADMIN') and hasAuthority('" + PermissionCodes.CUSTOMER_WRITE + "')")
     ResponseEntity<Void> grant(@PathVariable long customerId, @RequestBody @Valid GrantMembershipRequest body) {
         administration.grant(new GrantMembershipCommand(new AccountId(customerId), body.tier(), body.validUntil()));
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/admin/customers/{customerId}/membership")
-    @PreAuthorize("hasAuthority('TYPE_ADMIN') and hasAuthority('customer:write')")
+    @PreAuthorize("hasAuthority('TYPE_ADMIN') and hasAuthority('" + PermissionCodes.CUSTOMER_WRITE + "')")
     ResponseEntity<Void> cancel(@PathVariable long customerId) {
         administration.cancel(new AccountId(customerId));
         return ResponseEntity.noContent().build();

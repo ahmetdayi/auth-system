@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('İzin kataloğu')}"></head>
+<body data-page="permissions">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>İzin kataloğu</h1>
+    <p class="lead">
+        <code>GET /api/admin/permissions</code> — DB'deki <code>permissions</code> tablosu
+        (<code>name</code>, <code>description</code>, <code>group</code>). Satırlar
+        <code>KnownPermission</code> enum'undan startup'ta sync edilir; atamalar
+        (<code>account_permissions</code> / <code>role_permissions</code>) ayrıdır.
+        Yalnızca <code>TYPE_ADMIN</code> gerekir — <code>destek@</code> de açabilir.
+    </p>
+
+    <div class="card">
+        <div class="row">
+            <h2>Katalog</h2>
+            <span class="spacer"></span>
+            <button type="button" class="secondary small" data-action="load-catalog">Yenile</button>
+        </div>
+        <p class="small muted">Gruplara göre sıralı. Yeni permission ekleyip uygulamayı yeniden
+            başlattığında burada description/group güncellenmiş görünmeli.</p>
+        <div id="catalog-view" class="muted">Yükleniyor…</div>
+        <div id="catalog-result"></div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/permissions.js}"></script>
+</body>
+</html>
