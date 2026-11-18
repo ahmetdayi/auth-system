@@ -45,8 +45,13 @@ public final class TestData {
      * (customer). Tests of the delivery itself register through the API instead.
      */
     public Account customer() {
+        return customerWithEmailPrefix("customer");
+    }
+
+    /** Same as {@link #customer()} but e-mails share a searchable prefix (for directory filters). */
+    public Account customerWithEmailPrefix(String emailPrefix) {
         long id = nextAccountId();
-        String email = uniqueEmail("customer");
+        String email = uniqueEmail(emailPrefix);
         OffsetDateTime now = now();
         insertAccount(id, email, "CUSTOMER", null, now);
         jdbc.update("INSERT INTO account_roles (account_id, role_id) SELECT ?, id FROM roles WHERE name = 'USER'",
@@ -133,10 +138,63 @@ public final class TestData {
         return count == null ? 0 : count;
     }
 
+    /**
+     * An already-ended grant with audit extensions. Multiple ended grants per customer are allowed
+     * (the live unique index does not apply). Used to seed list N+1 scenarios.
+     */
+    public long endedGrantWithExtensions(Account agent, Account customer, int extensionCount) {
+        if (extensionCount < 0) {
+            throw new IllegalArgumentException("extensionCount");
+        }
+        long grantId = nextId("support_grant_id_seq");
+        OffsetDateTime requested = now().minusHours(2);
+        OffsetDateTime started = requested.plusMinutes(1);
+        OffsetDateTime ended = started.plusMinutes(20);
+        jdbc.update("""
+                INSERT INTO support_grants (id, agent_id, customer_id, status, scopes, initial_minutes,
+                                            extension_count, expires_at, requested_at, started_at, ended_at,
+                                            end_reason, created_at, updated_at, version)
+                VALUES (?, ?, ?, 'ENDED',
+                        'support:profile:read,support:profile:write,support:content:read,support:full',
+                        20, ?, ?, ?, ?, ?, 'AGENT_ENDED', ?, ?, 0)
+                """, grantId, agent.id(), customer.id(), extensionCount, ended, requested, started, ended,
+            now(), now());
+        for (int i = 0; i < extensionCount; i++) {
+            long extensionId = nextId("support_grant_extension_id_seq");
+            OffsetDateTime extRequested = started.plusMinutes(5L * (i + 1));
+            jdbc.update("""
+                    INSERT INTO support_grant_extensions (id, grant_id, requested_minutes, requested_at,
+                                                          decision, decided_at, created_at, updated_at, version)
+                    VALUES (?, ?, 20, ?, 'APPROVED', ?, ?, ?, 0)
+                    """, extensionId, grantId, extRequested, extRequested.plusSeconds(30), now(), now());
+        }
+        return grantId;
+    }
+
+    /** Extra addresses on a customer profile (for proving directory listing does not load them). */
+    public void addAddresses(Account customer, int count) {
+        if (count < 0 || count > 5) {
+            throw new IllegalArgumentException("count must be 0..5");
+        }
+        OffsetDateTime now = now();
+        for (int i = 0; i < count; i++) {
+            long id = nextId("customer_address_id_seq");
+            jdbc.update("""
+                    INSERT INTO customer_addresses (id, customer_id, label, city, line, created_at, updated_at,
+                                                    version)
+                    VALUES (?, ?, ?, 'Ankara', 'Test Cad. No: ' || ?, ?, ?, 0)
+                    """, id, customer.id(), "Adr-" + i, i, now, now);
+        }
+    }
+
     private long nextAccountId() {
-        Long id = jdbc.queryForObject("SELECT nextval('account_id_seq')", Long.class);
+        return nextId("account_id_seq");
+    }
+
+    private long nextId(String sequence) {
+        Long id = jdbc.queryForObject("SELECT nextval('" + sequence + "')", Long.class);
         if (id == null) {
-            throw new IllegalStateException("account_id_seq returned null");
+            throw new IllegalStateException(sequence + " returned null");
         }
         return id;
     }
