@@ -9,6 +9,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,7 @@ import tr.gov.kurum.identity.application.port.out.AccessTokenIssuer;
 import tr.gov.kurum.identity.application.port.out.IssuedAccessToken;
 import tr.gov.kurum.identity.domain.model.AccessProfile;
 import tr.gov.kurum.identity.domain.model.SessionId;
+import tr.gov.kurum.identity.domain.model.SupportGrantId;
 
 /**
  * Issues and verifies access tokens (HS256 JWT). Refresh tokens are not JWTs, so a refresh token can never
@@ -39,6 +41,8 @@ public class JwtAccessTokenService implements AccessTokenIssuer {
     static final String CLAIM_EMAIL = "email";
     static final String CLAIM_AUTHORITIES = "authorities";
     static final String CLAIM_SESSION_ID = "sid";
+    static final String CLAIM_ACTOR = "actor";
+    static final String CLAIM_GRANT_ID = "grant_id";
     /**
      * The standard {@code iat} has whole-second precision. Revocation compares the issue time with a cutoff in
      * milliseconds; with seconds only, a token issued 300 ms after a password change could fall "before" it
@@ -46,6 +50,7 @@ public class JwtAccessTokenService implements AccessTokenIssuer {
      */
     static final String CLAIM_ISSUED_AT_MILLIS = "iat_ms";
     static final String ACCESS_TOKEN_TYPE = "access";
+    static final String SUPPORT_ACCESS_TOKEN_TYPE = "support_access";
 
     private static final Logger log = LoggerFactory.getLogger(JwtAccessTokenService.class);
     private static final long CLOCK_SKEW_SECONDS = 30;
@@ -88,6 +93,35 @@ public class JwtAccessTokenService implements AccessTokenIssuer {
         return new IssuedAccessToken(token, expiresAt);
     }
 
+    @Override
+    public IssuedAccessToken issueSupport(AccountId customerId, String customerEmail, AccountId actorId,
+                                          SupportGrantId grantId, Collection<String> authorities,
+                                          SessionId agentSessionId, Instant grantExpiresAt) {
+        Instant now = clock.instant();
+        Instant accessExpiry = now.plus(properties.accessTokenTtl());
+        Instant expiresAt = grantExpiresAt.isBefore(accessExpiry) ? grantExpiresAt : accessExpiry;
+        if (!expiresAt.isAfter(now)) {
+            throw new IllegalArgumentException("grant already expired");
+        }
+        String token = Jwts.builder()
+            .id(UUID.randomUUID().toString())
+            .issuer(properties.issuer())
+            .subject(Long.toString(customerId.value()))
+            .claim(CLAIM_TOKEN_TYPE, SUPPORT_ACCESS_TOKEN_TYPE)
+            .claim(CLAIM_ACCOUNT_TYPE, AccountType.CUSTOMER.name())
+            .claim(CLAIM_EMAIL, customerEmail)
+            .claim(CLAIM_AUTHORITIES, List.copyOf(authorities))
+            .claim(CLAIM_ISSUED_AT_MILLIS, now.toEpochMilli())
+            .claim(CLAIM_SESSION_ID, agentSessionId.value())
+            .claim(CLAIM_ACTOR, actorId.value())
+            .claim(CLAIM_GRANT_ID, grantId.value())
+            .issuedAt(Date.from(now))
+            .expiration(Date.from(expiresAt))
+            .signWith(signingKey, Jwts.SIG.HS256)
+            .compact();
+        return new IssuedAccessToken(token, expiresAt);
+    }
+
     /**
      * Verifies signature, expiry, issuer, token type and the required claims.
      *
@@ -98,7 +132,9 @@ public class JwtAccessTokenService implements AccessTokenIssuer {
             throw new MalformedJwtException("empty token");
         }
         Claims claims = parser.parseSignedClaims(token).getPayload();
-        if (!ACCESS_TOKEN_TYPE.equals(claims.get(CLAIM_TOKEN_TYPE, String.class))) {
+        String tokenType = claims.get(CLAIM_TOKEN_TYPE, String.class);
+        boolean support = SUPPORT_ACCESS_TOKEN_TYPE.equals(tokenType);
+        if (!ACCESS_TOKEN_TYPE.equals(tokenType) && !support) {
             throw new MalformedJwtException("not an access token");
         }
         String accountType = claims.get(CLAIM_ACCOUNT_TYPE, String.class);
@@ -114,10 +150,21 @@ public class JwtAccessTokenService implements AccessTokenIssuer {
         AccountId account;
         AccountType type;
         SessionId sessionId;
+        AccountId actorId = null;
+        Long grantId = null;
         try {
             account = new AccountId(Long.parseLong(claims.getSubject()));
             type = AccountType.valueOf(accountType);
             sessionId = new SessionId(sessionNumber.longValue());
+            if (support) {
+                Object actorClaim = claims.get(CLAIM_ACTOR);
+                Object grantClaim = claims.get(CLAIM_GRANT_ID);
+                if (!(actorClaim instanceof Number actorNumber) || !(grantClaim instanceof Number grantNumber)) {
+                    throw new MalformedJwtException("missing support claim");
+                }
+                actorId = new AccountId(actorNumber.longValue());
+                grantId = grantNumber.longValue();
+            }
         } catch (IllegalArgumentException e) {   // NumberFormatException is an IllegalArgumentException
             throw new MalformedJwtException("invalid subject or user type", e);
         } catch (RuntimeException e) {          // e.g. a non-positive id rejected by AccountId
@@ -125,7 +172,7 @@ public class JwtAccessTokenService implements AccessTokenIssuer {
         }
         List<String> authorities = rawAuthorities.stream().map(String::valueOf).toList();
         return new VerifiedAccessToken(claims.getId(), account, type, sessionId, email, authorities,
-            Instant.ofEpochMilli(issuedAt.longValue()), claims.getExpiration().toInstant());
+            Instant.ofEpochMilli(issuedAt.longValue()), claims.getExpiration().toInstant(), actorId, grantId);
     }
 
     /** For logout: an expired or malformed token simply needs no revocation. */

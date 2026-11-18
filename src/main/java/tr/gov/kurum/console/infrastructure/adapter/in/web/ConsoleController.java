@@ -90,6 +90,11 @@ class ConsoleController {
         return page(model, "permissions");
     }
 
+    @GetMapping("/console/support")
+    String support(Model model) {
+        return page(model, "support");
+    }
+
     @GetMapping("/console/mobile")
     String mobile(Model model) {
         model.addAttribute("demoAccounts", properties.showDemoAccounts() ? DemoAccount.ALL : List.of());
@@ -127,7 +132,8 @@ class ConsoleController {
             new DemoAccount("pasif@example.com", "CUSTOMER", "Devre dışı hesap: doğru şifreyle de giremez"),
             new DemoAccount("admin@example.com", "ADMIN", "Standart admin: customer:read + customer:write"),
             new DemoAccount("super@example.com", "ADMIN", "SUPER_ADMIN: diğer adminlerin oturumlarını yönetir"),
-            new DemoAccount("destek@example.com", "ADMIN", "Yalnızca customer:read (yazma işlemleri 403)"));
+            new DemoAccount("destek@example.com", "SUPPORT",
+                "Destek ajanı: admin paneli yok; müşteri onayıyla act-as oturumu"));
 
         public String password() {
             return PASSWORD;

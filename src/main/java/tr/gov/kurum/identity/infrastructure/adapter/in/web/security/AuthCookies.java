@@ -21,6 +21,7 @@ public class AuthCookies {
 
     public static final String ACCESS_COOKIE = "access_token";
     public static final String REFRESH_COOKIE = "refresh_token";
+    public static final String SUPPORT_ACCESS_COOKIE = "support_access_token";
     static final String REFRESH_COOKIE_PATH = "/api/auth";
 
     private final CookieProperties cookieProperties;
@@ -39,6 +40,15 @@ public class AuthCookies {
     public void clear(HttpServletResponse response) {
         add(response, ACCESS_COOKIE, "", "/", Duration.ZERO);
         add(response, REFRESH_COOKIE, "", REFRESH_COOKIE_PATH, Duration.ZERO);
+        clearSupportAccess(response);
+    }
+
+    public void writeSupportAccess(HttpServletResponse response, String token, Duration maxAge) {
+        add(response, SUPPORT_ACCESS_COOKIE, token, "/", maxAge);
+    }
+
+    public void clearSupportAccess(HttpServletResponse response) {
+        add(response, SUPPORT_ACCESS_COOKIE, "", "/", Duration.ZERO);
     }
 
     /** @return the cookie value, or {@code null} when absent or blank */
@@ -49,6 +59,11 @@ public class AuthCookies {
     /** @return the cookie value, or {@code null} when absent or blank */
     public String readRefreshToken(HttpServletRequest request) {
         return read(request, REFRESH_COOKIE);
+    }
+
+    /** @return the cookie value, or {@code null} when absent or blank */
+    public String readSupportAccessToken(HttpServletRequest request) {
+        return read(request, SUPPORT_ACCESS_COOKIE);
     }
 
     private void add(HttpServletResponse response, String name, String value, String path, Duration maxAge) {

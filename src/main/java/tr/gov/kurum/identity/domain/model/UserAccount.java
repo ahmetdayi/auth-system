@@ -64,6 +64,16 @@ public final class UserAccount extends AggregateRoot {
         return account;
     }
 
+    /**
+     * Opens a support-agent login. No admin level, no membership, no synthetic ADMIN role — only whatever
+     * direct permissions / roles are assigned (demo agents typically have none; power comes from grants).
+     */
+    public static UserAccount openSupportAccount(AccountId id, EmailAddress email, PasswordHash passwordHash,
+                                                 Instant now) {
+        return new UserAccount(new UserAccountSnapshot(id, UNSAVED_VERSION, email, passwordHash,
+            AccountType.SUPPORT, null, AccountStatus.ACTIVE, Instant.EPOCH, Set.of(), Set.of(), now));
+    }
+
     public static UserAccount restore(UserAccountSnapshot snapshot) {
         return new UserAccount(snapshot);
     }

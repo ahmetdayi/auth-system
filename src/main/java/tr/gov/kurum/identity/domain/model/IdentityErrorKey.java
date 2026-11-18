@@ -23,7 +23,13 @@ public enum IdentityErrorKey implements ErrorKey {
     SESSION_NOT_FOUND(ErrorCategory.NOT_FOUND),
 
     ACCOUNT_NOT_FOUND(ErrorCategory.NOT_FOUND),
-    INVALID_MEMBERSHIP_LEVEL(ErrorCategory.INVALID_INPUT);
+    INVALID_MEMBERSHIP_LEVEL(ErrorCategory.INVALID_INPUT),
+
+    SUPPORT_GRANT_NOT_FOUND(ErrorCategory.NOT_FOUND),
+    SUPPORT_GRANT_CONFLICT(ErrorCategory.CONFLICT),
+    SUPPORT_GRANT_INVALID_STATE(ErrorCategory.RULE_VIOLATION),
+    SUPPORT_EXTENSION_LIMIT(ErrorCategory.RULE_VIOLATION),
+    SUPPORT_SCOPE_INVALID(ErrorCategory.INVALID_INPUT);
 
     private final ErrorCategory category;
 

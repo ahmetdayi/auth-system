@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tr.gov.kurum.common.domain.PermissionCodes;
 import tr.gov.kurum.common.web.AuthenticatedAccount;
 import tr.gov.kurum.common.web.CurrentAccount;
 import tr.gov.kurum.identity.application.port.in.ChangePasswordCommand;
@@ -47,15 +48,25 @@ class AccountController {
     /**
      * Ends every session, this one included; the browser's cookies are removed and the user logs in again.
      * Same endpoint for customers and admins: a password belongs to the account, not to a profile.
+     * With {@code support:full}, an agent may change the customer's password (needs current password).
      */
     @PostMapping("/account/password")
     ResponseEntity<Void> changePassword(@CurrentAccount AuthenticatedAccount account,
+                                        Authentication authentication,
                                         @RequestBody @Valid ChangePasswordRequest body,
                                         HttpServletRequest request, HttpServletResponse response) {
+        if (account.isSupportSession() && !hasSupportFull(authentication)) {
+            account.refuseIfSupportSession();
+        }
         passwords.changePassword(new ChangePasswordCommand(account.accountId(), body.currentPassword(),
             body.newPassword(), ClientDetailsResolver.from(request).ipAddress()));
         cookies.clear(response);
         return ResponseEntity.noContent().build();
+    }
+
+    private static boolean hasSupportFull(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+            .anyMatch(a -> PermissionCodes.SUPPORT_FULL.equals(a.getAuthority()));
     }
 
     record ChangePasswordRequest(

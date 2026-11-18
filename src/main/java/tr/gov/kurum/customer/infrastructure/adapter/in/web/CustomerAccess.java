@@ -17,10 +17,11 @@ public class CustomerAccess {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedAccount account)) {
             return false;
         }
-        // A new account type does not compile here until someone decides what it may do.
+        // SUPPORT agents only act through an act-as token (type CUSTOMER + actorId); their own token cannot.
         return switch (account.type()) {
             case CUSTOMER -> account.accountId().value() == customerId;
             case ADMIN -> hasAuthority(authentication, PermissionCodes.CUSTOMER_WRITE);
+            case SUPPORT -> false;
         };
     }
 

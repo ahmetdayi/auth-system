@@ -1,4 +1,6 @@
-import { $, api, clear, formatInstant, h, loadSession, onAction, onSubmit, showResult } from '../api.js';
+import {
+  $, api, clear, countdownBadge, formatInstant, h, loadSession, onAction, onSubmit, showResult, wireCountdowns,
+} from '../api.js';
 
 const view = $('#profile-view');
 
@@ -55,7 +57,115 @@ async function loadProfile() {
     addresses);
 }
 
+async function loadSupportGrants() {
+  const view = clear($('#support-grants-view'));
+  clear($('#support-grants-result'));
+  const [incoming, history] = await Promise.all([
+    api.get('/api/support/grants/incoming'),
+    api.get('/api/support/grants/history'),
+  ]);
+  if (!incoming.ok && incoming.status === 403) {
+    view.append(h('p', { class: 'muted small' }, 'Yalnızca müşteri hesabında görünür.'));
+    return;
+  }
+  if (!incoming.ok) {
+    showResult($('#support-grants-result'), incoming, 'incoming');
+    return;
+  }
+  const blocks = [];
+  for (const g of incoming.data ?? []) {
+    const buttons = [];
+    if (g.status === 'PENDING') {
+      buttons.push(h('button', {
+        type: 'button', class: 'small', dataset: { action: 'approve-grant', id: g.id },
+      }, 'Onayla'));
+      buttons.push(h('button', {
+        type: 'button', class: 'danger secondary small', dataset: { action: 'deny-grant', id: g.id },
+      }, 'Reddet'));
+    }
+    if (g.status === 'PENDING_EXTENSION') {
+      const pending = (g.extensions || []).find((e) => e.decision === 'PENDING');
+      if (pending) {
+        buttons.push(h('button', {
+          type: 'button', class: 'small',
+          dataset: { action: 'approve-extension', id: g.id, ext: pending.id },
+        }, `Uzatmayı onayla (+${pending.requestedMinutes} dk)`));
+        buttons.push(h('button', {
+          type: 'button', class: 'danger secondary small',
+          dataset: { action: 'deny-extension', id: g.id, ext: pending.id },
+        }, 'Uzatmayı reddet'));
+      }
+    }
+    if (g.status === 'ACTIVE' || g.status === 'PENDING_EXTENSION') {
+      buttons.push(h('button', {
+        type: 'button', class: 'danger secondary small', dataset: { action: 'end-grant-customer', id: g.id },
+      }, 'Oturumu bitir'));
+    }
+    const meta = [];
+    if (g.expiresAt && (g.status === 'ACTIVE' || g.status === 'PENDING_EXTENSION')) {
+      meta.push(h('p', { class: 'small' },
+        `Bitiş ${formatInstant(g.expiresAt)} · kalan: `, countdownBadge(g.expiresAt)));
+    }
+    blocks.push(h('div', { class: 'card' },
+      h('div', { class: 'row' },
+        h('span', {}, `#${g.id} ${g.status} · ajan #${g.agentId} (${g.agentEmail})`),
+        h('span', { class: 'spacer' }),
+        ...buttons),
+      ...meta,
+      h('p', { class: 'small muted' }, 'İstenen yetkiler (onaylayınca act-as token bunları taşır):'),
+      h('div', { class: 'authorities' },
+        (g.scopes || []).map((x) => h('span', { class: 'badge info' }, x)))));
+  }
+  if (blocks.length === 0) {
+    blocks.push(h('p', { class: 'muted small' }, 'Bekleyen talep yok.'));
+  }
+  blocks.push(h('h3', {}, 'Geçmiş'));
+  if (!history.ok) {
+    blocks.push(h('p', { class: 'muted small' }, 'Geçmiş okunamadı.'));
+  } else if (!(history.data || []).length) {
+    blocks.push(h('p', { class: 'muted small' }, 'Kayıt yok.'));
+  } else {
+    blocks.push(h('table', {},
+      h('thead', {}, h('tr', {},
+        h('th', {}, 'Id'), h('th', {}, 'Ajan'), h('th', {}, 'Durum'), h('th', {}, 'Dk'),
+        h('th', {}, 'Uzatma'), h('th', {}, 'Bitiş nedeni'))),
+      h('tbody', {}, history.data.map((g) => h('tr', {},
+        h('td', {}, String(g.id)),
+        h('td', {}, g.agentEmail),
+        h('td', {}, g.status),
+        h('td', {}, String(g.initialMinutes + g.totalApprovedExtensionMinutes)),
+        h('td', {}, String(g.extensionCount)),
+        h('td', {}, g.endReason || '—'))))));
+  }
+  view.append(...blocks);
+  wireCountdowns(view);
+}
+
 onAction('load-profile', loadProfile);
+onAction('load-support-grants', loadSupportGrants);
+
+onAction('approve-grant', async (btn) => {
+  showResult($('#support-grants-result'), await api.post(`/api/support/grants/${btn.dataset.id}/approve`));
+  await loadSupportGrants();
+});
+onAction('deny-grant', async (btn) => {
+  showResult($('#support-grants-result'), await api.post(`/api/support/grants/${btn.dataset.id}/deny`));
+  await loadSupportGrants();
+});
+onAction('approve-extension', async (btn) => {
+  showResult($('#support-grants-result'),
+    await api.post(`/api/support/grants/${btn.dataset.id}/extensions/${btn.dataset.ext}/approve`));
+  await loadSupportGrants();
+});
+onAction('deny-extension', async (btn) => {
+  showResult($('#support-grants-result'),
+    await api.post(`/api/support/grants/${btn.dataset.id}/extensions/${btn.dataset.ext}/deny`));
+  await loadSupportGrants();
+});
+onAction('end-grant-customer', async (btn) => {
+  showResult($('#support-grants-result'), await api.post(`/api/support/grants/${btn.dataset.id}/end`));
+  await loadSupportGrants();
+});
 
 onAction('remove-address', async (button) => {
   const response = await api.delete(`/api/customer/addresses/${button.dataset.id}`);
@@ -90,4 +200,7 @@ onSubmit($('#password-form'), async (values, form) => {
   }
 });
 
-loadSession().then(loadProfile);
+loadSession().then(async () => {
+  await loadProfile();
+  await loadSupportGrants();
+});

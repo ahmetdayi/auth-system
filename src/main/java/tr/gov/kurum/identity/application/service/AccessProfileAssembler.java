@@ -14,17 +14,17 @@ import tr.gov.kurum.identity.domain.model.UserAccount;
  * membership from the membership context. The decision itself stays in the aggregate.
  */
 @Component
-class AccessProfileAssembler {
+public class AccessProfileAssembler {
 
     private final RoleRepository roleRepository;
     private final MembershipLevelLookup membershipLevelLookup;
 
-    AccessProfileAssembler(RoleRepository roleRepository, MembershipLevelLookup membershipLevelLookup) {
+    public AccessProfileAssembler(RoleRepository roleRepository, MembershipLevelLookup membershipLevelLookup) {
         this.roleRepository = roleRepository;
         this.membershipLevelLookup = membershipLevelLookup;
     }
 
-    AccessProfile profileOf(UserAccount account) {
+    public AccessProfile profileOf(UserAccount account) {
         Optional<MembershipLevel> membership = account.is(AccountType.CUSTOMER)
             ? membershipLevelLookup.currentLevelOf(account.id())
             : Optional.empty();

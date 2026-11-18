@@ -94,6 +94,8 @@ public class SecurityConfig {
                 // TYPE_ADMIN, not ROLE_ADMIN: a role is data and could be assigned to a customer by mistake,
                 // the type authority is produced in code from the account's type.
                 .requestMatchers("/api/admin/**").hasAuthority(AuthorityNames.typeAuthority(AccountType.ADMIN))
+                // Support grants: SUPPORT agents and customers; the controller narrows it per endpoint.
+                .requestMatchers("/api/support/**").authenticated()
                 .anyRequest().authenticated())
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(entryPoint)

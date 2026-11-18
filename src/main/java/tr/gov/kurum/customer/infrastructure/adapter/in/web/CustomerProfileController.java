@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import tr.gov.kurum.common.domain.AccountId;
+import tr.gov.kurum.common.domain.PermissionCodes;
 import tr.gov.kurum.common.web.AuthenticatedAccount;
 import tr.gov.kurum.common.web.CurrentAccount;
 import tr.gov.kurum.customer.application.port.in.AddCustomerAddressCommand;
@@ -33,6 +34,10 @@ import tr.gov.kurum.customer.infrastructure.adapter.in.web.CustomerDtos.RenameRe
 @RequestMapping("/api")
 class CustomerProfileController {
 
+    /** The customer's own permission, or the scope an agent got through a support grant. */
+    private static final String WRITE_PROFILE = "hasAuthority('TYPE_CUSTOMER') and (hasAuthority('"
+        + PermissionCodes.PROFILE_WRITE + "') or hasAuthority('" + PermissionCodes.SUPPORT_PROFILE_WRITE + "'))";
+
     private final CustomerProfileUseCase profiles;
 
     CustomerProfileController(CustomerProfileUseCase profiles) {
@@ -41,13 +46,14 @@ class CustomerProfileController {
 
     /** An admin calling this gets 403: an admin account has no customer profile. */
     @GetMapping("/customer/profile")
-    @PreAuthorize("hasAuthority('TYPE_CUSTOMER')")
+    @PreAuthorize("hasAuthority('TYPE_CUSTOMER') and (hasAuthority('" + PermissionCodes.PROFILE_READ + "')"
+        + " or hasAuthority('" + PermissionCodes.SUPPORT_PROFILE_READ + "'))")
     CustomerProfileView profile(@CurrentAccount AuthenticatedAccount account) {
         return profiles.getProfile(account.requireCustomer());
     }
 
     @PostMapping("/customer/addresses")
-    @PreAuthorize("hasAuthority('TYPE_CUSTOMER')")
+    @PreAuthorize(WRITE_PROFILE)
     ResponseEntity<CreatedResponse> addAddress(@CurrentAccount AuthenticatedAccount account,
                                                @RequestBody @Valid AddAddressRequest body) {
         AddressId id = profiles.addAddress(
@@ -56,7 +62,7 @@ class CustomerProfileController {
     }
 
     @DeleteMapping("/customer/addresses/{addressId}")
-    @PreAuthorize("hasAuthority('TYPE_CUSTOMER')")
+    @PreAuthorize(WRITE_PROFILE)
     ResponseEntity<Void> removeAddress(@CurrentAccount AuthenticatedAccount account, @PathVariable long addressId) {
         profiles.removeAddress(account.requireCustomer(), new AddressId(addressId));
         return ResponseEntity.noContent().build();

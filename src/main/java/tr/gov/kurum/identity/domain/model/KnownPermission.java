@@ -13,7 +13,11 @@ public enum KnownPermission {
     PROFILE_WRITE(PermissionCodes.PROFILE_WRITE, "Kendi profil bilgisini güncelleme", "profile"),
     CUSTOMER_READ(PermissionCodes.CUSTOMER_READ, "Müşteri verilerini görüntüleme", "customer"),
     CUSTOMER_WRITE(PermissionCodes.CUSTOMER_WRITE, "Müşteri verilerini güncelleme", "customer"),
-    CONTENT_PREMIUM_READ(PermissionCodes.CONTENT_PREMIUM_READ, "Premium içerik okuma", "content");
+    CONTENT_PREMIUM_READ(PermissionCodes.CONTENT_PREMIUM_READ, "Premium içerik okuma", "content"),
+    SUPPORT_PROFILE_READ(PermissionCodes.SUPPORT_PROFILE_READ, "Destek oturumunda profil okuma", "support"),
+    SUPPORT_PROFILE_WRITE(PermissionCodes.SUPPORT_PROFILE_WRITE, "Destek oturumunda profil güncelleme", "support"),
+    SUPPORT_CONTENT_READ(PermissionCodes.SUPPORT_CONTENT_READ, "Destek oturumunda müşteri içeriklerini okuma", "support"),
+    SUPPORT_FULL(PermissionCodes.SUPPORT_FULL, "Destek oturumunda müşterinin tüm yetkileri (şifre dahil)", "support");
 
     private final String code;
     private final String description;

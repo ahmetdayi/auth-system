@@ -68,6 +68,18 @@
         </div>
 
         <div class="card">
+            <div class="row">
+                <h2>Destek talepleri</h2>
+                <span class="spacer"></span>
+                <button type="button" class="secondary small" data-action="load-support-grants">Yenile</button>
+            </div>
+            <p class="small muted">Gelen onaylar + geçmiş. Onay sonrası ajan kendi tarayıcısında
+                <code>claim</code> ile cookie alır.</p>
+            <div id="support-grants-view" class="muted">—</div>
+            <div id="support-grants-result"></div>
+        </div>
+
+        <div class="card">
             <h2>Şifre değiştir</h2>
             <p class="small muted">Başarılı olunca hesabın bütün oturumları kapanır, bu cihazınki dahil.
                 Diğer cihazlardaki access token'lar da hemen iptal edilir (Redis'te hesap bazlı kesim zamanı).</p>

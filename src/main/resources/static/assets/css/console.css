@@ -192,3 +192,99 @@ pre.json {
 
 /* JWT decode view */
 .token-box { font-family: var(--mono); font-size: 12px; word-break: break-all; background: var(--bg); padding: 8px; border-radius: 6px; }
+
+/* Act-as floating chip (claim sonrası). Host is chip-sized; menu is absolute so bottom dock stays usable. */
+.actas-fab {
+  --fab-x: 0px;
+  --fab-y: 0px;
+  position: fixed;
+  z-index: 40;
+  right: 20px;
+  bottom: 20px;
+  width: 76px;
+  height: 76px;
+  touch-action: none;
+  user-select: none;
+}
+.actas-fab.is-placed {
+  right: auto;
+  bottom: auto;
+  left: var(--fab-x);
+  top: var(--fab-y);
+}
+.actas-fab-chip {
+  width: 76px;
+  height: 76px;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  background: var(--panel);
+  color: var(--accent);
+  box-shadow: 0 6px 20px rgba(29, 35, 48, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  cursor: grab;
+  line-height: 1.15;
+  position: relative;
+  z-index: 1;
+}
+.actas-fab-chip:active { cursor: grabbing; }
+.actas-fab-chip--active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.actas-fab-chip--parked {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.actas-fab-chip-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.actas-fab-chip-time {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  max-width: 68px;
+  text-align: center;
+}
+.actas-fab-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: 220px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(29, 35, 48, 0.16);
+  padding: 10px 12px;
+  z-index: 2;
+}
+.actas-fab--menu-down .actas-fab-menu {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+.actas-fab-menu-title {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.actas-fab-menu-sub {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.actas-fab-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.actas-fab-actions button { width: 100%; }
+.actas-fab-status { margin: 8px 0 0; }
+.actas-fab-status--err { color: var(--err); }

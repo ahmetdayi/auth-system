@@ -46,13 +46,15 @@ class ContentController {
     }
 
     @GetMapping("/tiers/{tier}/articles")
-    @PreAuthorize("hasAuthority('TYPE_CUSTOMER') and hasAuthority('MEMBERSHIP_' + #tier.name())")
+    @PreAuthorize("hasAuthority('TYPE_CUSTOMER') and (hasAuthority('MEMBERSHIP_' + #tier.name())"
+        + " or hasAuthority('" + PermissionCodes.SUPPORT_CONTENT_READ + "'))")
     List<ArticleSummaryView> articlesOfTier(@PathVariable ReaderTier tier, Authentication authentication) {
         return content.listArticlesRequiring(tier, ReaderTierResolver.of(authentication));
     }
 
     @GetMapping("/premium/articles")
-    @PreAuthorize("hasAuthority('TYPE_CUSTOMER') and hasAuthority('" + PermissionCodes.CONTENT_PREMIUM_READ + "')")
+    @PreAuthorize("hasAuthority('TYPE_CUSTOMER') and (hasAuthority('" + PermissionCodes.CONTENT_PREMIUM_READ + "')"
+        + " or hasAuthority('" + PermissionCodes.SUPPORT_CONTENT_READ + "'))")
     List<ArticleSummaryView> premiumArticles(Authentication authentication) {
         return content.listArticlesRequiring(ReaderTier.GOLD, ReaderTierResolver.of(authentication));
     }

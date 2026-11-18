@@ -45,6 +45,49 @@ export function formatInstant(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('tr-TR');
 }
 
+/** UI-only countdown from an absolute {@code expiresAt} (server still owns the real deadline). */
+export function formatRemaining(expiresAt, now = Date.now()) {
+  if (!expiresAt) return '—';
+  const end = new Date(expiresAt).getTime();
+  if (Number.isNaN(end)) return '—';
+  const seconds = Math.max(0, Math.round((end - now) / 1000));
+  if (seconds === 0) return 'süresi doldu';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    return `${h} sa ${m % 60} dk ${s} sn`;
+  }
+  return `${m} dk ${s} sn`;
+}
+
+/**
+ * Keeps every {@code [data-countdown-until]} node updated once per second.
+ * Call again after re-rendering the page section (rebinds to the new nodes).
+ */
+const countdownTimers = new WeakMap();
+export function wireCountdowns(root = document) {
+  const previous = countdownTimers.get(root);
+  if (previous) clearInterval(previous);
+  const nodes = () => root.querySelectorAll
+    ? root.querySelectorAll('[data-countdown-until]')
+    : [];
+  const tick = () => {
+    for (const el of nodes()) {
+      el.textContent = formatRemaining(el.dataset.countdownUntil);
+    }
+  };
+  tick();
+  const id = setInterval(tick, 1000);
+  countdownTimers.set(root, id);
+  return id;
+}
+
+export function countdownBadge(expiresAt) {
+  if (!expiresAt) return h('span', { class: 'muted' }, '—');
+  return h('strong', { dataset: { countdownUntil: expiresAt } }, formatRemaining(expiresAt));
+}
+
 export function statusBadge(status) {
   const cls = status >= 200 && status < 300 ? 'ok' : status >= 500 || status === 0 ? 'err' : 'warn';
   return h('span', { class: `badge ${cls}` }, status === 0 ? 'AĞ HATASI' : String(status));
@@ -307,6 +350,11 @@ export async function browserLogout() {
 onAction('header-logout', async () => {
   await browserLogout();
   window.location.href = '/console/login';
+});
+
+// Floating act-as chip on every console page that imports this module.
+queueMicrotask(() => {
+  import('./actas-fab.js').then((m) => m.startActAsFab()).catch(() => { /* page without module graph */ });
 });
 
 /** Base64URL without padding, as used in JWTs. */

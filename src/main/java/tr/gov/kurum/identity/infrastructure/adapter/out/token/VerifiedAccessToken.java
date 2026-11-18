@@ -3,6 +3,7 @@ package tr.gov.kurum.identity.infrastructure.adapter.out.token;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import tr.gov.kurum.common.domain.AccountId;
 import tr.gov.kurum.common.domain.AccountType;
 import tr.gov.kurum.identity.domain.model.SessionId;
@@ -16,7 +17,9 @@ public record VerifiedAccessToken(
         String email,
         List<String> authorities,
         Instant issuedAt,
-        Instant expiresAt) {
+        Instant expiresAt,
+        AccountId actorId,
+        Long grantId) {
 
     public VerifiedAccessToken {
         Objects.requireNonNull(tokenId, "tokenId");
@@ -27,5 +30,20 @@ public record VerifiedAccessToken(
         authorities = List.copyOf(authorities);
         Objects.requireNonNull(issuedAt, "issuedAt");
         Objects.requireNonNull(expiresAt, "expiresAt");
+        if ((actorId == null) != (grantId == null)) {
+            throw new IllegalArgumentException("actorId and grantId must both be set or both be null");
+        }
+    }
+
+    public boolean isSupportSession() {
+        return actorId != null;
+    }
+
+    public Optional<AccountId> actorIdOptional() {
+        return Optional.ofNullable(actorId);
+    }
+
+    public Optional<Long> grantIdOptional() {
+        return Optional.ofNullable(grantId);
     }
 }

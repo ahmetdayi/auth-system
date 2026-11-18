@@ -12,6 +12,18 @@ INSERT INTO role_permissions (role_id, permission_name)
 SELECT id, 'content:premium:read' FROM roles WHERE name = 'PREMIUM_READER'
 ON CONFLICT DO NOTHING;
 
+-- Reclassify legacy demo row BEFORE inserting: destek@ was ADMIN, now SUPPORT.
+-- Doing this after INSERT would create SUPPORT then flip ADMIN→SUPPORT and hit uk_accounts_email_type.
+DELETE FROM account_permissions
+WHERE account_id IN (SELECT id FROM accounts WHERE email = 'destek@example.com' AND account_type = 'ADMIN');
+DELETE FROM admin_profile_regions
+WHERE account_id IN (SELECT id FROM accounts WHERE email = 'destek@example.com' AND account_type = 'ADMIN');
+DELETE FROM admin_profiles
+WHERE account_id IN (SELECT id FROM accounts WHERE email = 'destek@example.com' AND account_type = 'ADMIN');
+UPDATE accounts
+SET account_type = 'SUPPORT', admin_level = NULL, updated_at = now()
+WHERE email = 'destek@example.com' AND account_type = 'ADMIN';
+
 -- Ids are handed out in the listed order (nextval() in a SELECT does not follow ORDER BY).
 WITH demo (email, account_type, admin_level, status, created_at) AS (VALUES
         ('ayse@example.com',   'CUSTOMER', NULL,       'ACTIVE',   TIMESTAMPTZ '2026-01-01T00:00:00Z'),
@@ -21,7 +33,7 @@ WITH demo (email, account_type, admin_level, status, created_at) AS (VALUES
         ('pasif@example.com',  'CUSTOMER', NULL,       'DISABLED', TIMESTAMPTZ '2026-01-05T00:00:00Z'),
         ('admin@example.com',  'ADMIN',    'STANDARD', 'ACTIVE',   TIMESTAMPTZ '2026-01-06T00:00:00Z'),
         ('super@example.com',  'ADMIN',    'SUPER',    'ACTIVE',   TIMESTAMPTZ '2026-01-07T00:00:00Z'),
-        ('destek@example.com', 'ADMIN',    'STANDARD', 'ACTIVE',   TIMESTAMPTZ '2026-01-08T00:00:00Z')),
+        ('destek@example.com', 'SUPPORT',  NULL,       'ACTIVE',   TIMESTAMPTZ '2026-01-08T00:00:00Z')),
 missing AS (
     SELECT d.*, row_number() OVER (ORDER BY d.created_at) AS position
     FROM demo d
@@ -52,8 +64,8 @@ INSERT INTO account_permissions (account_id, permission_name)
 SELECT a.id, p.permission
 FROM accounts a
 JOIN (VALUES ('admin@example.com', 'customer:read'), ('admin@example.com', 'customer:write'),
-             ('super@example.com', 'customer:read'), ('super@example.com', 'customer:write'),
-             ('destek@example.com', 'customer:read')) AS p (email, permission) ON p.email = a.email
+             ('super@example.com', 'customer:read'), ('super@example.com', 'customer:write'))
+  AS p (email, permission) ON p.email = a.email
 WHERE a.account_type = 'ADMIN'
 ON CONFLICT DO NOTHING;
 
@@ -94,8 +106,7 @@ INSERT INTO admin_profiles (account_id, full_name, department, created_at, updat
 SELECT a.id, d.full_name, d.department, now(), now(), 0
 FROM accounts a
 JOIN (VALUES ('admin@example.com', 'Ali Yönetici', 'Müşteri Hizmetleri'),
-             ('super@example.com', 'Selin Süper', 'Bilgi İşlem'),
-             ('destek@example.com', 'Deniz Destek', 'Destek')) AS d (email, full_name, department)
+             ('super@example.com', 'Selin Süper', 'Bilgi İşlem')) AS d (email, full_name, department)
   ON d.email = a.email
 WHERE a.account_type = 'ADMIN'
 ON CONFLICT (account_id) DO NOTHING;

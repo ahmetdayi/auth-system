@@ -31,8 +31,11 @@ import tr.gov.kurum.identity.infrastructure.adapter.out.token.VerifiedAccessToke
  *   <li>Invalid, expired or revoked token: continue anonymously and record the reason in a request
  *       attribute. Public endpoints (login, refresh) keep working with a stale cookie; protected ones are
  *       answered 401 by the entry point, which reports the reason.</li>
- *   <li>Revocation store unreachable: 503. Letting the request in without knowing whether the token was
- *       revoked would be fail-open.</li>
+ *   <li>Revocation store unreachable: API requests get 503 (fail-closed). Console HTML navigations load
+ *       anonymously instead of a raw JSON problem body in the browser tab.</li>
+ *   <li>Browser cookies: a valid {@code support_access_token} is preferred over {@code access_token} for
+ *       paths outside {@code /api/support/**} (and for {@code GET /api/support/session}), so the agent acts
+ *       as the customer for profile APIs while still using their own token for grant management.</li>
  * </ul>
  *
  * <p>Not a Spring bean: Spring Boot registers every {@code Filter} bean with the servlet container as well,
@@ -76,7 +79,7 @@ public final class JwtAuthenticationFilter extends OncePerRequestFilter {
         // With an Authorization header only the header counts, never the cookie: the CSRF exemption for
         // requests carrying this header relies on exactly that.
         String token = header != null ? header.substring(BEARER_PREFIX.length()).trim()
-            : cookies.readAccessToken(request);
+            : resolveCookieToken(request);
         if (token == null) {
             chain.doFilter(request, response);
             return;
@@ -100,6 +103,12 @@ public final class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (DataAccessException | IllegalStateException e) {
             log.error("Revocation store unavailable, request rejected: path={}, cause={}",
                 request.getRequestURI(), e.getMessage());
+            // API stays fail-closed (503 JSON). Console HTML navigations must not become a black JSON page —
+            // load the Thymeleaf view anonymously; /api/* calls will still surface AUTH_UNAVAILABLE.
+            if (isConsoleHtmlNavigation(request)) {
+                continueAnonymously(request, response, chain, SecurityErrorKey.AUTH_UNAVAILABLE);
+                return;
+            }
             problemWriter.write(request, response, SecurityErrorKey.AUTH_UNAVAILABLE);
             return;
         }
@@ -108,8 +117,11 @@ public final class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        AuthenticatedAccount account = new AuthenticatedAccount(verified.account(), verified.type(),
-            verified.sessionId().value(), verified.email(), verified.tokenId(), verified.expiresAt());
+        AuthenticatedAccount account = verified.isSupportSession()
+            ? AuthenticatedAccount.supportSession(verified.account(), verified.sessionId().value(),
+                verified.email(), verified.tokenId(), verified.expiresAt(), verified.actorId(), verified.grantId())
+            : AuthenticatedAccount.of(verified.account(), verified.type(), verified.sessionId().value(),
+                verified.email(), verified.tokenId(), verified.expiresAt());
         List<SimpleGrantedAuthority> authorities = verified.authorities().stream()
             .map(SimpleGrantedAuthority::new)
             .toList();
@@ -120,10 +132,44 @@ public final class JwtAuthenticationFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
+    /**
+     * Prefer a valid support cookie for customer-facing paths; keep the agent's own access cookie for
+     * {@code /api/support/**} grant APIs (except the session probe).
+     */
+    private String resolveCookieToken(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        boolean preferSupport = !path.startsWith("/api/support/") || "/api/support/session".equals(path);
+        if (preferSupport) {
+            String support = cookies.readSupportAccessToken(request);
+            if (support != null) {
+                try {
+                    tokenService.verify(support);
+                    return support;
+                } catch (JwtException | IllegalArgumentException ignored) {
+                    // Fall through to the agent's normal access cookie.
+                }
+            }
+        }
+        return cookies.readAccessToken(request);
+    }
+
     private static void continueAnonymously(HttpServletRequest request, HttpServletResponse response,
                                             FilterChain chain, SecurityErrorKey failure)
             throws ServletException, IOException {
         request.setAttribute(TOKEN_FAILURE_ATTRIBUTE, failure);
         chain.doFilter(request, response);
+    }
+
+    /** Browser document GET under /console — not XHR/fetch API calls. */
+    private static boolean isConsoleHtmlNavigation(HttpServletRequest request) {
+        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        if (!path.equals("/console") && !path.startsWith("/console/")) {
+            return false;
+        }
+        String accept = request.getHeader(HttpHeaders.ACCEPT);
+        return accept == null || accept.contains("text/html");
     }
 }

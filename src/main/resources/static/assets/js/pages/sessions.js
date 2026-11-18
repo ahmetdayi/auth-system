@@ -1,8 +1,7 @@
 import {
-  $, api, clear, formatInstant, h, loadSession, me, onAction, request, showResult,
+  $, api, clear, countdownBadge, formatInstant, h, loadSession, me, onAction, request, showResult,
+  wireCountdowns,
 } from '../api.js';
-
-let countdownTimer = null;
 
 function renderToken() {
   const view = clear($('#token-view'));
@@ -11,19 +10,11 @@ function renderToken() {
     view.append(h('p', { class: 'muted' }, 'Giriş yapılmamış.'));
     return;
   }
-  const expiresAt = new Date(current.accessTokenExpiresAt);
-  const remaining = h('strong', {});
   view.append(
     h('p', {}, 'Oturum id: ', h('code', {}, String(current.sessionId)), ' · bitiş: ',
-      formatInstant(current.accessTokenExpiresAt), ' · kalan: ', remaining),
+      formatInstant(current.accessTokenExpiresAt), ' · kalan: ', countdownBadge(current.accessTokenExpiresAt)),
     h('div', { class: 'authorities' }, current.authorities.map((a) => h('span', { class: 'badge info' }, a))));
-  clearInterval(countdownTimer);
-  const tick = () => {
-    const seconds = Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000));
-    remaining.textContent = `${Math.floor(seconds / 60)} dk ${seconds % 60} sn`;
-  };
-  tick();
-  countdownTimer = setInterval(tick, 1000);
+  wireCountdowns(view);
 }
 
 async function loadSessions() {

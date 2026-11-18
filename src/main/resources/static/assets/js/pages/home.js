@@ -6,7 +6,8 @@ onAction('quick-login', async (button) => {
   showResult($('#quick-login-result'), response, `${email} ile tarayıcı girişi`);
   if (response.ok) {
     // Reload so the server-side badge also shows the new identity.
-    window.location.href = type === 'ADMIN' ? '/console/admin' : '/console/profile';
+    window.location.href = type === 'ADMIN' ? '/console/admin'
+      : type === 'SUPPORT' ? '/console/support' : '/console/profile';
   }
 });
 

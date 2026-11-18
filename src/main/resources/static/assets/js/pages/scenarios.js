@@ -43,6 +43,30 @@ async function accountIdOf(tokens) {
   return response.data.accountId;
 }
 
+/** Ends leftover PENDING/ACTIVE/PENDING_EXTENSION grants so support scenarios stay idempotent. */
+async function clearLiveSupportGrants(agentTokens, customerTokens) {
+  const live = new Set(['PENDING', 'ACTIVE', 'PENDING_EXTENSION']);
+  const mine = await withToken(agentTokens.accessToken)('GET', '/api/support/grants/mine');
+  for (const g of mine.ok ? mine.data ?? [] : []) {
+    if (!live.has(g.status)) continue;
+    await withToken(agentTokens.accessToken)('POST', `/api/support/grants/${g.id}/end`);
+  }
+  const incoming = await withToken(customerTokens.accessToken)('GET', '/api/support/grants/incoming');
+  for (const g of incoming.ok ? incoming.data ?? [] : []) {
+    if (!live.has(g.status)) continue;
+    await withToken(customerTokens.accessToken)('POST', `/api/support/grants/${g.id}/end`);
+  }
+}
+
+async function requestSupportGrant(agentTokens, customerId) {
+  const response = await withToken(agentTokens.accessToken)('POST', '/api/support/grants', { customerId });
+  if (response.status === 409 && response.code === 'SUPPORT_GRANT_CONFLICT') {
+    await clearLiveSupportGrants(agentTokens, ctx.ayse);
+    return withToken(agentTokens.accessToken)('POST', '/api/support/grants', { customerId });
+  }
+  return response;
+}
+
 function describe(response) {
   return `${response.status}${response.code ? ` ${response.code}` : ''}`;
 }
@@ -190,6 +214,7 @@ const scenarios = [
     expected: '200',
     run: async () => {
       ctx.ayse = await loginOrFail('ayse@example.com');
+      ctx.ayseId = await accountIdOf(ctx.ayse);
       return expectResponse(await withToken(ctx.ayse.accessToken)('GET', '/api/content/tiers/SILVER/articles'), 200);
     },
   },
@@ -242,18 +267,10 @@ const scenarios = [
     },
   },
   {
-    title: 'Yalnızca customer:read olan admin (destek@) listeler',
-    expected: '200',
-    run: async () => {
-      ctx.support = await loginOrFail('destek@example.com', DEMO_PASSWORD, 'ADMIN');
-      return expectResponse(await withToken(ctx.support.accessToken)('GET', '/api/admin/customers?size=5'), 200);
-    },
-  },
-  {
     title: 'İzin kataloğu (permissions tablosu) admin için okunur',
     expected: '200 + customer:read satırı',
     run: async () => {
-      const response = await withToken(ctx.support.accessToken)('GET', '/api/admin/permissions');
+      const response = await withToken(ctx.admin.accessToken)('GET', '/api/admin/permissions');
       const status = expectResponse(response, 200);
       if (!status.pass) return status;
       const names = (response.data ?? []).map((row) => row.name);
@@ -270,10 +287,183 @@ const scenarios = [
       403, 'ACCESS_DENIED'),
   },
   {
-    title: 'customer:write olmadan müşteri devre dışı bırakmak (destek@)',
+    title: 'SUPPORT (destek@) admin paneline giremez',
     expected: '403 ACCESS_DENIED',
-    run: async () => expectResponse(await withToken(ctx.support.accessToken)('POST',
-      `/api/admin/customers/${ctx.fresh.id}/disable`), 403, 'ACCESS_DENIED'),
+    run: async () => {
+      ctx.supportAgent = await loginOrFail('destek@example.com', DEMO_PASSWORD, 'SUPPORT');
+      ctx.ayseId = ctx.ayseId ?? await accountIdOf(ctx.ayse);
+      await clearLiveSupportGrants(ctx.supportAgent, ctx.ayse);
+      return expectResponse(await withToken(ctx.supportAgent.accessToken)('GET', '/api/admin/customers?size=5'),
+        403, 'ACCESS_DENIED');
+    },
+  },
+  {
+    title: 'Müşteri destek grant talep edemez',
+    expected: '403 ACCESS_DENIED',
+    run: async () => expectResponse(await withToken(ctx.ayse.accessToken)('POST', '/api/support/grants',
+      { customerId: ctx.ayseId }), 403, 'ACCESS_DENIED'),
+  },
+  {
+    title: 'Destek grant: talep → incoming → red',
+    expected: '201 PENDING → 200 DENIED',
+    run: async () => {
+      const requested = await requestSupportGrant(ctx.supportAgent, ctx.ayseId);
+      if (requested.status !== 201) return expectResponse(requested, 201);
+      ctx.deniedGrantId = requested.data.id;
+      const incoming = await withToken(ctx.ayse.accessToken)('GET', '/api/support/grants/incoming');
+      const inOk = expectResponse(incoming, 200);
+      if (!inOk.pass) return inOk;
+      const listed = (incoming.data ?? []).some((g) => g.id === ctx.deniedGrantId && g.status === 'PENDING');
+      if (!listed) return { pass: false, actual: 'incoming’de PENDING yok' };
+      const denied = await withToken(ctx.ayse.accessToken)('POST',
+        `/api/support/grants/${ctx.deniedGrantId}/deny`);
+      const dOk = expectResponse(denied, 200);
+      if (!dOk.pass) return dOk;
+      return denied.data.status === 'DENIED'
+        ? { pass: true, actual: `DENIED #${ctx.deniedGrantId}` }
+        : { pass: false, actual: `status=${denied.data.status}` };
+    },
+  },
+  {
+    title: 'Destek grant: talep → onay → claim → act-as profil',
+    expected: 'ACTIVE + 200 profile',
+    run: async () => {
+      const requested = await requestSupportGrant(ctx.supportAgent, ctx.ayseId);
+      if (requested.status !== 201) return expectResponse(requested, 201);
+      ctx.grantId = requested.data.id;
+      const approved = await withToken(ctx.ayse.accessToken)('POST',
+        `/api/support/grants/${ctx.grantId}/approve`);
+      const aOk = expectResponse(approved, 200);
+      if (!aOk.pass) return aOk;
+      if (approved.data.status !== 'ACTIVE') {
+        return { pass: false, actual: `status=${approved.data.status}` };
+      }
+      const claimed = await withToken(ctx.supportAgent.accessToken)('POST',
+        `/api/support/grants/${ctx.grantId}/claim`);
+      const cOk = expectResponse(claimed, 200);
+      if (!cOk.pass) return cOk;
+      ctx.supportAccessToken = claimed.data?.supportAccessToken;
+      if (!ctx.supportAccessToken) {
+        return { pass: false, actual: `supportAccessToken yok · keys=${Object.keys(claimed.data ?? {})}` };
+      }
+      return expectResponse(await withToken(ctx.supportAccessToken)('GET', '/api/customer/profile'), 200);
+    },
+  },
+  {
+    title: 'Act-as + support:full: müşteri adına şifre değişimi',
+    expected: '204; şifre geri alınır; claim yenilenir',
+    run: async () => {
+      const changed = await withToken(ctx.supportAccessToken)('POST', '/api/account/password',
+        { currentPassword: DEMO_PASSWORD, newPassword: 'YeniSifre-999!' });
+      const cOk = expectResponse(changed, 204);
+      if (!cOk.pass) return cOk;
+      const ayseNew = await loginOrFail('ayse@example.com', 'YeniSifre-999!');
+      const restored = await withToken(ayseNew.accessToken)('POST', '/api/account/password',
+        { currentPassword: 'YeniSifre-999!', newPassword: DEMO_PASSWORD });
+      const rOk = expectResponse(restored, 204);
+      if (!rOk.pass) return rOk;
+      ctx.ayse = await loginOrFail('ayse@example.com');
+      ctx.supportAgent = await loginOrFail('destek@example.com', DEMO_PASSWORD, 'SUPPORT');
+      const claimed = await withToken(ctx.supportAgent.accessToken)('POST',
+        `/api/support/grants/${ctx.grantId}/claim`);
+      const claimOk = expectResponse(claimed, 200);
+      if (!claimOk.pass) return claimOk;
+      ctx.supportAccessToken = claimed.data?.supportAccessToken;
+      if (!ctx.supportAccessToken) return { pass: false, actual: 'şifre sonrası claim token yok' };
+      return { pass: true, actual: '204 + restore + claim' };
+    },
+  },
+  {
+    title: 'Act-as leave: kendi hesabına dön, grant açık, yeniden claim',
+    expected: 'leave 200 active=false; claim sonrası profil 200',
+    run: async () => {
+      const left = await withToken(ctx.supportAgent.accessToken)('POST', '/api/support/session/leave');
+      const lOk = expectResponse(left, 200);
+      if (!lOk.pass) return lOk;
+      if (left.data?.active) return { pass: false, actual: 'leave sonrası session hâlâ active' };
+      const stillOpen = await withToken(ctx.supportAgent.accessToken)('GET',
+        `/api/support/grants/${ctx.grantId}`);
+      const gOk = expectResponse(stillOpen, 200);
+      if (!gOk.pass) return gOk;
+      if (stillOpen.data.status !== 'ACTIVE' && stillOpen.data.status !== 'PENDING_EXTENSION') {
+        return { pass: false, actual: `grant kapandı: ${stillOpen.data.status}` };
+      }
+      const claimed = await withToken(ctx.supportAgent.accessToken)('POST',
+        `/api/support/grants/${ctx.grantId}/claim`);
+      const cOk = expectResponse(claimed, 200);
+      if (!cOk.pass) return cOk;
+      ctx.supportAccessToken = claimed.data?.supportAccessToken;
+      if (!ctx.supportAccessToken) return { pass: false, actual: 'yeniden claim token yok' };
+      return expectResponse(await withToken(ctx.supportAccessToken)('GET', '/api/customer/profile'), 200);
+    },
+  },
+  {
+    title: 'Destek uzatma: iste → müşteri onay → yeniden claim',
+    expected: 'PENDING_EXTENSION → ACTIVE + yeni token',
+    run: async () => {
+      const ext = await withToken(ctx.supportAgent.accessToken)('POST',
+        `/api/support/grants/${ctx.grantId}/extensions`);
+      if (ext.status !== 201) return expectResponse(ext, 201);
+      if (ext.data.status !== 'PENDING_EXTENSION') {
+        return { pass: false, actual: `status=${ext.data.status}` };
+      }
+      const pending = (ext.data.extensions ?? []).find((e) => e.decision === 'PENDING');
+      if (!pending) return { pass: false, actual: 'PENDING extension yok' };
+      ctx.extensionId = pending.id;
+      const approved = await withToken(ctx.ayse.accessToken)('POST',
+        `/api/support/grants/${ctx.grantId}/extensions/${ctx.extensionId}/approve`);
+      const aOk = expectResponse(approved, 200);
+      if (!aOk.pass) return aOk;
+      if (approved.data.status !== 'ACTIVE' || approved.data.extensionCount < 1) {
+        return { pass: false, actual: `status=${approved.data.status} ext=${approved.data.extensionCount}` };
+      }
+      const claimed = await withToken(ctx.supportAgent.accessToken)('POST',
+        `/api/support/grants/${ctx.grantId}/claim`);
+      const cOk = expectResponse(claimed, 200);
+      if (!cOk.pass) return cOk;
+      ctx.supportAccessToken = claimed.data?.supportAccessToken;
+      return ctx.supportAccessToken
+        ? { pass: true, actual: `uzatma #${ctx.extensionId} + yeni token` }
+        : { pass: false, actual: 'yeni supportAccessToken yok' };
+    },
+  },
+  {
+    title: 'Destek uzatma reddi yolu (ayrı grant) + history',
+    expected: 'extension DENIED → grant ACTIVE; history dolu',
+    run: async () => {
+      const ended = await withToken(ctx.supportAgent.accessToken)('POST',
+        `/api/support/grants/${ctx.grantId}/end`);
+      const eOk = expectResponse(ended, 200);
+      if (!eOk.pass) return eOk;
+      const requested = await requestSupportGrant(ctx.supportAgent, ctx.ayseId);
+      if (requested.status !== 201) return expectResponse(requested, 201);
+      const grantId = requested.data.id;
+      await withToken(ctx.ayse.accessToken)('POST', `/api/support/grants/${grantId}/approve`);
+      const ext = await withToken(ctx.supportAgent.accessToken)('POST',
+        `/api/support/grants/${grantId}/extensions`);
+      if (ext.status !== 201) return expectResponse(ext, 201);
+      const pending = (ext.data.extensions ?? []).find((e) => e.decision === 'PENDING');
+      if (!pending) return { pass: false, actual: 'PENDING extension yok' };
+      const denied = await withToken(ctx.ayse.accessToken)('POST',
+        `/api/support/grants/${grantId}/extensions/${pending.id}/deny`);
+      const dOk = expectResponse(denied, 200);
+      if (!dOk.pass) return dOk;
+      if (denied.data.status !== 'ACTIVE') {
+        return { pass: false, actual: `deny sonrası status=${denied.data.status}` };
+      }
+      await withToken(ctx.supportAgent.accessToken)('POST', `/api/support/grants/${grantId}/end`);
+      const history = await withToken(ctx.ayse.accessToken)('GET', '/api/support/grants/history');
+      const hOk = expectResponse(history, 200);
+      if (!hOk.pass) return hOk;
+      const rows = history.data ?? [];
+      const hasDenied = rows.some((g) => g.id === ctx.deniedGrantId);
+      const hasEnded = rows.some((g) => g.id === ctx.grantId);
+      const hasExtDeny = rows.some((g) => g.id === grantId
+        && (g.extensions ?? []).some((e) => e.decision === 'DENIED'));
+      return hasDenied && hasEnded && hasExtDeny
+        ? { pass: true, actual: `history ${rows.length} grant` }
+        : { pass: false, actual: `history eksik denied=${hasDenied} ended=${hasEnded} extDeny=${hasExtDeny}` };
+    },
   },
   {
     title: 'Sıralama alanı beyaz listede değil (sort=password)',

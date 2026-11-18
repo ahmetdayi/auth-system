@@ -7,7 +7,8 @@ onSubmit(form, async (values) => {
   showResult($('#login-result'), response, 'Yanıt gövdesi (token yok, cookie\'lerde)');
   if (response.ok) {
     await loadSession();
-    const target = values.userType === 'ADMIN' ? '/console/admin' : '/console/profile';
+    const target = values.userType === 'ADMIN' ? '/console/admin'
+      : values.userType === 'SUPPORT' ? '/console/support' : '/console/profile';
     $('#login-result').append(h('p', { class: 'note small' },
       'Giriş başarılı. ', h('a', { href: target }, 'Devam et →'),
       ' (sayfayı yenileyince sunucu tarafı gösterge de güncellenir)'));

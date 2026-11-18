@@ -110,7 +110,9 @@ public final class AuthDtos {
             String email,
             long sessionId,
             Instant accessTokenExpiresAt,
-            List<String> authorities) {
+            List<String> authorities,
+            Long actorId,
+            Long grantId) {
 
         public MeResponse {
             authorities = List.copyOf(authorities);
@@ -118,7 +120,9 @@ public final class AuthDtos {
 
         static MeResponse of(AuthenticatedAccount account, List<String> authorities) {
             return new MeResponse(account.type(), account.accountId().value(), account.email(),
-                account.sessionId(), account.tokenExpiresAt(), authorities);
+                account.sessionId(), account.tokenExpiresAt(), authorities,
+                account.actorId() == null ? null : account.actorId().value(),
+                account.grantId());
         }
     }
 }

@@ -85,6 +85,15 @@ public final class TestData {
             account.id(), roleName);
     }
 
+    /** A SUPPORT agent account (no admin profile, no admin_level). */
+    public Account support() {
+        long id = nextAccountId();
+        String email = uniqueEmail("support");
+        OffsetDateTime now = now();
+        insertAccount(id, email, "SUPPORT", null, now);
+        return new Account(id, email, "SUPPORT");
+    }
+
     /** An admin account (identity) with direct permissions, plus its staff profile. */
     public Account admin(String level, String... permissions) {
         long id = nextAccountId();

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{console/layout :: head('Destek')}"></head>
+<body data-page="support">
+<header th:replace="~{console/layout :: header}"></header>
+<main>
+    <h1>Destek oturumu</h1>
+    <p class="lead">
+        <code>AccountType.SUPPORT</code> ajanı admin paneline girmez. Akış: talep et → müşteri onaylar
+        (profil sayfası) → ajan <code>claim</code> ile <code>support_access_token</code> alır → müşteri
+        profilini act-as ile okur/yazar → uzatma / bitir. Demo: <code>destek@</code> + müşteri
+        <code>ayse@</code> (id'yi listeden veya <code>/api/me</code>'den al).
+    </p>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="row">
+                <h2>Act-as oturumu</h2>
+                <span class="spacer"></span>
+                <button type="button" class="secondary small" data-action="leave-session">Kendi hesabıma dön</button>
+                <button type="button" class="secondary small" data-action="load-session">Yenile</button>
+            </div>
+            <p class="small muted">Leave cookie’yi siler, grant açık kalır → tekrar <code>Claim</code>.
+                <code>Bitir</code> grant’ı da kapatır.</p>
+            <div id="session-view" class="muted">Yükleniyor…</div>
+            <div id="session-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Grant talep et</h2>
+            <p class="small muted">İstediğin yetkileri seç (veya tümü). <code>Tam müşteri erişimi</code> claim’de
+                müşterinin tüm yetkilerini taşır (şifre dahil). Grant onay/red yalnızca müşterinin kendi oturumunda.
+                Müşteri onay ekranında aynı listeyi görür.</p>
+            <form id="request-form">
+                <div class="inline-fields">
+                    <div class="field">
+                        <label for="customerId">Müşteri account id</label>
+                        <input id="customerId" name="customerId" type="number" min="1" required>
+                    </div>
+                    <div class="field">
+                        <label>&nbsp;</label>
+                        <button type="submit">Talep et (20 dk)</button>
+                    </div>
+                </div>
+                <div class="row" style="margin-top:0.75rem;gap:0.5rem;flex-wrap:wrap;align-items:center">
+                    <button type="button" class="secondary small" data-action="scopes-all">Tüm yetkiler</button>
+                    <button type="button" class="secondary small" data-action="scopes-none">Hiçbiri</button>
+                </div>
+                <div id="scope-picker" class="muted small" style="margin-top:0.5rem">Yükleniyor…</div>
+            </form>
+            <div id="request-result"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="row">
+            <h2>Benim grant'lerim</h2>
+            <span class="spacer"></span>
+            <button type="button" class="secondary small" data-action="load-mine">Yenile</button>
+        </div>
+        <div id="mine-view" class="muted">Yükleniyor…</div>
+        <div id="mine-result"></div>
+    </div>
+
+    <div class="card">
+        <div class="row">
+            <h2>Act-as ile müşteri profili</h2>
+            <span class="spacer"></span>
+            <button type="button" class="secondary small" data-action="load-acted-profile">GET /api/customer/profile</button>
+        </div>
+        <p class="small muted">Support cookie varken filter onu tercih eder; yetkiler yalnızca grant scope'larıdır.</p>
+        <div id="acted-profile-view"></div>
+        <div id="acted-profile-result"></div>
+    </div>
+</main>
+<section th:replace="~{console/layout :: request-log}"></section>
+<script type="module" th:src="@{/assets/js/pages/support.js}"></script>
+</body>
+</html>
